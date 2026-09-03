@@ -1,0 +1,16 @@
+{
+  "short_name": "SafarAI",
+  "name": "SafarAI - Indian Eco-Tourism Intelligence",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FAF8F5",
+  "theme_color": "#B94723",
+  "display": "standalone",
+  "orientation": "portrait"
+}

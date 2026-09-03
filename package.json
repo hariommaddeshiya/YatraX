@@ -1,0 +1,28 @@
+{
+  "name": "safarai-fullstack",
+  "version": "1.0.0",
+  "description": "SafarAI - Full-Stack AI-Driven Eco-Tourism & Multi-Modal Travel Planner (SIH 2026)",
+  "scripts": {
+    "build": "npm run install-all && npm run build-client",
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "build-client": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "dev:server": "cd server && npm start",
+    "dev:client": "cd client && npm run dev"
+  },
+  "keywords": [
+    "sih-2026",
+    "eco-tourism",
+    "travel-planner",
+    "mern",
+    "react",
+    "node",
+    "socketio",
+    "threejs"
+  ],
+  "author": "SafarAI Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
