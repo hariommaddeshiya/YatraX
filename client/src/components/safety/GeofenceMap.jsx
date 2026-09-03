@@ -80,7 +80,7 @@ export const GeofenceMap = () => {
       </div>
 
       {/* Leaflet Map Frame */}
-      <div className="w-full h-[450px] rounded-2xl overflow-hidden border-2 border-sand-300 shadow-inner relative z-10">
+      <div className="w-full h-[280px] sm:h-[360px] md:h-[450px] rounded-2xl overflow-hidden border-2 border-sand-300 shadow-inner relative z-0">
         <MapContainer 
           center={[centerLat, centerLng]} 
           zoom={10} 

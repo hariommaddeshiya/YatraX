@@ -28,11 +28,11 @@ const LocationSearch = ({ onLocationFound }) => {
   };
 
   return (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white p-2 rounded-xl shadow-lg border border-sand-300 flex items-center gap-2">
+    <div className="absolute top-4 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[1000] bg-white p-2 rounded-xl shadow-lg border border-sand-300 flex items-center gap-2 sm:transform">
       <input 
         type="text" 
         placeholder="Search region to geofence..." 
-        className="px-3 py-1.5 outline-none text-sm w-64 rounded-lg bg-sand-50"
+        className="px-3 py-1.5 outline-none text-sm w-full sm:w-64 rounded-lg bg-sand-50"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleSearch(e)}
@@ -143,9 +143,9 @@ export const AdminGeofenceMap = ({ zones, onZoneAdded, onZoneRemoved }) => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 h-[500px]">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Map Column */}
-        <div className="flex-1 relative rounded-2xl overflow-hidden border border-sand-300 isolate relative z-0">
+        <div className="flex-1 relative rounded-2xl overflow-hidden border border-sand-300 isolate relative z-0 h-[300px] sm:h-[400px] lg:h-[500px]">
           <MapContainer center={[22.5, 79.0]} zoom={4} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
@@ -191,7 +191,7 @@ export const AdminGeofenceMap = ({ zones, onZoneAdded, onZoneRemoved }) => {
         </div>
 
         {/* Sidebar */}
-        <div className="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto pr-2">
+        <div className="w-full lg:w-80 flex flex-col gap-4 max-h-72 lg:max-h-none overflow-y-auto pr-1">
           {draftZone ? (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-4">
               <h4 className="font-bold text-sm text-blue-900 border-b border-blue-200 pb-2">New Zone Configuration</h4>

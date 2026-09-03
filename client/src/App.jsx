@@ -38,7 +38,7 @@ export default function App() {
               <Navbar onOpenSos={() => setSosModalOpen(true)} />
 
               {/* Main Content View */}
-              <main className="flex-1">
+              <main className="flex-1 pb-24 lg:pb-0">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/explore-india" element={<ExploreIndiaPage />} />

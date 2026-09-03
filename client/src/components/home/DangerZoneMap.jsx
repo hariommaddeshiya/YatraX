@@ -82,7 +82,7 @@ export const DangerZoneMap = ({ destinationQuery }) => {
         This map displays live hazard zones defined by the government. The map automatically centers on your selected destination.
       </p>
       
-      <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-sand-300 isolate relative z-0">
+      <div className="w-full h-[280px] sm:h-[360px] md:h-[400px] rounded-2xl overflow-hidden border border-sand-300 isolate relative z-0">
         <MapContainer center={[22.5, 79.0]} zoom={4} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           

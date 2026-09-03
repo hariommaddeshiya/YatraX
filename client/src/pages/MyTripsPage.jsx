@@ -57,7 +57,7 @@ export const MyTripsPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header & Total Budget */}
-      <div className="bg-gradient-to-r from-forest-900 via-forest-950 to-slate-900 rounded-4xl p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-forest-900 via-forest-950 to-slate-900 rounded-4xl p-5 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-500/20 relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="space-y-2 relative z-10">
