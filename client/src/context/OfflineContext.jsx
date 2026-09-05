@@ -115,7 +115,10 @@ export const OfflineProvider = ({ children }) => {
   const cacheImagesOffline = async (urls) => {
     if (!('caches' in window) || !urls || urls.length === 0) return;
     try {
-      const cache = await caches.open('yatrax-images-v2');
+      // Ensure cache name matches current active SW image cache version (v3)
+      const cacheNames = await caches.keys();
+      const imgCacheName = cacheNames.find(c => c.startsWith('yatrax-images-')) || 'yatrax-images-v3';
+      const cache = await caches.open(imgCacheName);
       const uniqueUrls = [...new Set(urls.filter(Boolean))];
       await Promise.all(
         uniqueUrls.map(async (url) => {

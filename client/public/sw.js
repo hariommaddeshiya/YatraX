@@ -1,5 +1,5 @@
 // YatraX Production Service Worker - Offline-First PWA Engine
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_SHELL = `yatrax-shell-${CACHE_VERSION}`;
 const CACHE_STATIC = `yatrax-static-${CACHE_VERSION}`;
 const CACHE_IMAGES = `yatrax-images-${CACHE_VERSION}`;
@@ -16,17 +16,24 @@ const PRECACHE_ASSETS = self.__SW_PRECACHE_ASSETS__ || [
 // INSTALLATION
 // ==========================================
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_SHELL).then(async (cache) => {
       console.log('[ServiceWorker] Pre-caching core app shell & assets');
-      try {
-        await cache.addAll(PRECACHE_ASSETS);
-      } catch (err) {
-        console.warn('[ServiceWorker] Some pre-cache assets could not be cached immediately:', err);
-      }
+      await Promise.allSettled(
+        PRECACHE_ASSETS.map(async (assetUrl) => {
+          try {
+            const res = await fetch(assetUrl, { cache: 'reload' });
+            if (res && res.ok) {
+              await cache.put(assetUrl, res);
+            }
+          } catch (err) {
+            console.warn(`[ServiceWorker] Could not pre-cache ${assetUrl}:`, err);
+          }
+        })
+      );
     })
   );
-  self.skipWaiting();
 });
 
 // ==========================================
@@ -38,7 +45,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
-          if (!expectedCaches.includes(key) && key.startsWith('yatrax-')) {
+          if (!expectedCaches.includes(key)) {
             console.log('[ServiceWorker] Removing obsolete cache version:', key);
             return caches.delete(key);
           }
@@ -78,26 +85,37 @@ self.addEventListener('fetch', (event) => {
   // 3. SPA Navigation requests (HTML pages: /explore, /trip, /heritage, etc.)
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((networkRes) => {
-          // Cache successful navigation HTML in shell cache
-          if (networkRes.ok) {
+      (async () => {
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes && networkRes.ok) {
             const resClone = networkRes.clone();
-            caches.open(CACHE_SHELL).then((cache) => cache.put(req, resClone));
+            caches.open(CACHE_SHELL).then((cache) => {
+              cache.put(req, resClone.clone());
+              cache.put('/index.html', resClone.clone());
+              cache.put('/', resClone);
+            });
           }
           return networkRes;
-        })
-        .catch(async () => {
-          // Offline fallback: serve cached index.html (ignoring search query params)
-          const cachedPage = await caches.match(req, { ignoreSearch: true });
-          if (cachedPage) return cachedPage;
-          const shellIndex = await caches.match('/index.html', { ignoreSearch: true });
-          if (shellIndex) return shellIndex;
-          const rootMatch = await caches.match('/', { ignoreSearch: true });
-          if (rootMatch) return rootMatch;
+        } catch (err) {
+          // Offline fallback: try matched route, index.html, or root
+          const cached = (await caches.match(req, { ignoreSearch: true })) ||
+                         (await caches.match('/index.html', { ignoreSearch: true })) ||
+                         (await caches.match('/', { ignoreSearch: true }));
+          if (cached) return cached;
+
           const shellCache = await caches.open(CACHE_SHELL);
-          return (await shellCache.match('/index.html')) || (await shellCache.match('/'));
-        })
+          const shellIndex = (await shellCache.match('/index.html')) || 
+                             (await shellCache.match('/'));
+          if (shellIndex) return shellIndex;
+
+          // Fail-safe offline HTML response to never return null/undefined
+          return new Response(
+            '<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>YatraX Offline</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#FAF8F5;color:#1e293b;text-align:center;padding:24px;box-sizing:border-box}.card{background:#fff;padding:32px 24px;border-radius:24px;box-shadow:0 10px 25px rgba(0,0,0,0.06);max-width:360px;width:100%}h2{margin-top:0;color:#064E3B;font-size:22px}p{color:#64748b;font-size:13px;line-height:1.5}button{margin-top:16px;background:#064E3B;color:#fff;border:none;padding:12px 24px;border-radius:16px;font-weight:bold;cursor:pointer;font-size:13px}</style></head><body><div class="card"><h2>YatraX Offline</h2><p>You are currently offline. Check your network or reload to access cached trips.</p><button onclick="window.location.reload()">Reload Application</button></div></body></html>',
+            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        }
+      })()
     );
     return;
   }
@@ -106,11 +124,8 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(req)
-        .then((networkRes) => {
-          return networkRes;
-        })
-        .catch(async () => {
-          // Return clean offline response for frontend catch blocks
+        .then((networkRes) => networkRes)
+        .catch(() => {
           return new Response(
             JSON.stringify({
               success: false,
@@ -135,32 +150,30 @@ self.addEventListener('fetch', (event) => {
 
   if (isImage) {
     event.respondWith(
-      caches.match(req).then(async (cachedRes) => {
-        if (cachedRes) return cachedRes;
+      (async () => {
+        const cached = (await caches.match(req)) || 
+                       (await caches.match(req, { ignoreSearch: true }));
+        if (cached) return cached;
 
-        // Try fuzzy match ignoring query parameters if needed
-        const fuzzyMatch = await caches.match(req, { ignoreSearch: true });
-        if (fuzzyMatch) return fuzzyMatch;
-
-        return fetch(req)
-          .then((networkRes) => {
-            // Support both standard OK responses and cross-origin opaque responses (Unsplash)
-            if (networkRes.ok || networkRes.type === 'opaque') {
-              const resClone = networkRes.clone();
-              caches.open(CACHE_IMAGES).then((cache) => cache.put(req, resClone));
-            }
-            return networkRes;
-          })
-          .catch(async () => {
-            // Optional fallback placeholder
-            return (await caches.match('/logo.svg')) || Response.error();
-          });
-      })
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes.ok || networkRes.type === 'opaque') {
+            const resClone = networkRes.clone();
+            const cache = await caches.open(CACHE_IMAGES);
+            cache.put(req, resClone);
+          }
+          return networkRes;
+        } catch (err) {
+          const fallback = await caches.match('/logo.svg');
+          if (fallback) return fallback;
+          return new Response('', { status: 404, statusText: 'Image Not In Offline Cache' });
+        }
+      })()
     );
     return;
   }
 
-  // 6. Static Assets (JS bundles, CSS, Fonts, Leaflet CDN) -> Stale-While-Revalidate / Cache-First
+  // 6. Static Assets (JS bundles, CSS, Fonts, Leaflet CDN) -> Cache-First with network fallback
   const isStaticAsset = url.pathname.startsWith('/assets/') ||
                         url.hostname.includes('unpkg.com') ||
                         url.hostname.includes('fonts.googleapis.com') ||
@@ -169,29 +182,39 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset) {
     event.respondWith(
-      caches.match(req, { ignoreSearch: true }).then((cachedRes) => {
-        const fetchPromise = fetch(req)
-          .then((networkRes) => {
-            if (networkRes.ok || networkRes.type === 'opaque') {
-              const resClone = networkRes.clone();
-              caches.open(CACHE_STATIC).then((cache) => cache.put(req, resClone));
-            }
-            return networkRes;
-          })
-          .catch(() => null);
+      (async () => {
+        const cached = await caches.match(req, { ignoreSearch: true });
+        if (cached) return cached;
 
-        // Return cached asset immediately if available, else wait for network
-        return cachedRes || fetchPromise;
-      })
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes.ok || networkRes.type === 'opaque') {
+            const resClone = networkRes.clone();
+            const cache = await caches.open(CACHE_STATIC);
+            cache.put(req, resClone);
+          }
+          return networkRes;
+        } catch (err) {
+          const fuzzy = await caches.match(url.pathname, { ignoreSearch: true });
+          if (fuzzy) return fuzzy;
+          return new Response('', { status: 404, statusText: 'Offline Asset Not Found' });
+        }
+      })()
     );
     return;
   }
 
   // 7. Generic Fallback
   event.respondWith(
-    caches.match(req).then((cachedRes) => {
-      return cachedRes || fetch(req).catch(() => null);
-    })
+    (async () => {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      try {
+        return await fetch(req);
+      } catch (err) {
+        return new Response('', { status: 503, statusText: 'Offline' });
+      }
+    })()
   );
 });
 
