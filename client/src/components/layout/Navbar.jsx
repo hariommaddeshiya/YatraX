@@ -61,6 +61,7 @@ export const Navbar = ({ onOpenSos }) => {
     isDestinationDownloaded, 
     downloadStatus, 
     downloadProgress, 
+    downloadStage,
     downloadError 
   } = useOffline();
   const { activeTrip, destinations } = useTrip();
@@ -361,22 +362,22 @@ export const Navbar = ({ onOpenSos }) => {
                   ) : downloadStatus === 'READY' ? (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="hidden sm:inline text-[11px]">Ready ✓</span>
+                      <span className="hidden sm:inline text-[11px]">✓ Available Offline</span>
                     </>
                   ) : isOffline ? (
                     <>
                       <HardDriveDownload className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      <span className="hidden sm:inline text-[11px]">Offline</span>
+                      <span className="hidden sm:inline text-[11px]">Offline Mode</span>
                     </>
                   ) : isCurrentDownloaded ? (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="hidden sm:inline text-[11px]">Saved ✓</span>
+                      <span className="hidden sm:inline text-[11px]">✓ Available Offline</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-3.5 h-3.5 text-forest-700 group-hover:text-white transition-colors shrink-0" />
-                      <span className="hidden sm:inline text-[11px]">Offline</span>
+                      <span className="hidden sm:inline text-[11px]">Download for Offline</span>
                     </>
                   )}
                 </button>
@@ -481,7 +482,7 @@ export const Navbar = ({ onOpenSos }) => {
                               {downloadStatus === 'DOWNLOADING' ? (
                                 <>
                                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  <span>Downloading package...</span>
+                                  <span>{downloadStage || 'Downloading package...'}</span>
                                 </>
                               ) : (
                                 <>

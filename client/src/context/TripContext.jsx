@@ -37,6 +37,39 @@ export const TripProvider = ({ children }) => {
 
   // Load initial destinations & active trip on mount
   const fetchInitialData = useCallback(async () => {
+    // 1. If offline, immediately hydrate from IndexedDB without network lag
+    if (!navigator.onLine) {
+      try {
+        setLoading(true);
+        const [savedTrip, savedDestinations, savedPackages] = await Promise.all([
+          getSavedTripOffline(),
+          getAllDestinationsOffline(),
+          getAllOfflinePackages()
+        ]);
+
+        if (savedTrip) {
+          setActiveTrip(savedTrip);
+        } else if (savedPackages && savedPackages.length > 0 && savedPackages[0].trip) {
+          setActiveTrip(savedPackages[0].trip);
+        }
+
+        if (savedDestinations && savedDestinations.length > 0) {
+          setDestinations(savedDestinations);
+        } else if (savedPackages && savedPackages.length > 0) {
+          const pkgDestinations = savedPackages.map(p => p.destination).filter(Boolean);
+          if (pkgDestinations.length > 0) {
+            setDestinations(pkgDestinations);
+          }
+        }
+      } catch (e) {
+        console.warn('[TripContext] Offline initialization error:', e);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 2. If online: Fetch fresh API data and update IndexedDB
     try {
       setLoading(true);
       const [destRes, tripRes] = await Promise.all([
@@ -64,6 +97,8 @@ export const TripProvider = ({ children }) => {
 
         if (savedTrip) {
           setActiveTrip(savedTrip);
+        } else if (savedPackages && savedPackages.length > 0 && savedPackages[0].trip) {
+          setActiveTrip(savedPackages[0].trip);
         }
 
         if (savedDestinations && savedDestinations.length > 0) {
@@ -85,6 +120,13 @@ export const TripProvider = ({ children }) => {
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  // Sync with offlineTrip if activeTrip is empty or if offline
+  useEffect(() => {
+    if (offlineTrip && (!activeTrip || !navigator.onLine)) {
+      setActiveTrip(offlineTrip);
+    }
+  }, [offlineTrip, activeTrip]);
 
   // Socket listener to auto-update activeTrip when an adaptation occurs
   useEffect(() => {

@@ -31,8 +31,9 @@ export const OfflineProvider = ({ children }) => {
   const [offlineTrip, setOfflineTrip] = useState(null);
   const [isSavedForOffline, setIsSavedForOffline] = useState(false);
 
-  // Download state machine: 'IDLE' | 'DOWNLOADING' | 'READY' | 'FAILED'
+  const [isDbReady, setIsDbReady] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState('IDLE');
+  const [downloadStage, setDownloadStage] = useState('Idle');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadError, setDownloadError] = useState(null);
   const [activeDownloadingId, setActiveDownloadingId] = useState(null);
@@ -48,6 +49,7 @@ export const OfflineProvider = ({ children }) => {
         setOfflineTrip(saved);
         setIsSavedForOffline(true);
       }
+      setIsDbReady(true);
     } catch (err) {
       console.warn('[OfflineContext] Could not load offline packages from IndexedDB:', err);
     }
@@ -114,14 +116,17 @@ export const OfflineProvider = ({ children }) => {
     if (!('caches' in window) || !urls || urls.length === 0) return;
     try {
       const cache = await caches.open('yatrax-images-v2');
+      const uniqueUrls = [...new Set(urls.filter(Boolean))];
       await Promise.all(
-        urls.filter(Boolean).map(async (url) => {
+        uniqueUrls.map(async (url) => {
           try {
             const req = new Request(url, { mode: 'no-cors' });
             const res = await fetch(req);
-            if (res) await cache.put(req, res);
+            if (res) {
+              await cache.put(req, res);
+            }
           } catch (e) {
-            // Ignore single image fetch failures
+            // Ignore individual image download error
           }
         })
       );
@@ -132,7 +137,7 @@ export const OfflineProvider = ({ children }) => {
 
   /**
    * Complete Download Destination Workflow
-   * Downloads destination info, POIs, safety, emergency, routes, itinerary, and images
+   * Downloads destination info, POIs, safety, emergency, routes, itinerary, and all required images
    */
   const downloadDestination = async (destInput, extraData = {}) => {
     if (!destInput) return { success: false, message: 'No destination provided' };
@@ -144,13 +149,14 @@ export const OfflineProvider = ({ children }) => {
 
     try {
       setDownloadStatus('DOWNLOADING');
+      setDownloadStage('Preparing offline package...');
       setActiveDownloadingId(destId);
-      setDownloadProgress(10);
+      setDownloadProgress(15);
       setDownloadError(null);
 
-      // 1. Destination data (25%)
+      // 1. Destination data & Stays (35%)
       let destinationData = { ...destInput };
-      if (!destinationData.coordinates && !destinationData.culturalDescription) {
+      if (!destinationData.culturalDescription || !destinationData.coordinates) {
         try {
           const res = await api.get(`/destinations/${destId}`);
           if (res.success && res.destination) {
@@ -158,9 +164,10 @@ export const OfflineProvider = ({ children }) => {
           }
         } catch (e) {}
       }
-      setDownloadProgress(30);
+      setDownloadStage('Saving destination details & itinerary...');
+      setDownloadProgress(40);
 
-      // 2. POIs & Places (50%)
+      // 2. POIs & Places (60%)
       const lat = destinationData.coordinates?.lat || 25.5788;
       const lng = destinationData.coordinates?.lng || 91.8933;
       let places = [];
@@ -170,21 +177,22 @@ export const OfflineProvider = ({ children }) => {
           places = poiRes.data;
         }
       } catch (e) {}
-      setDownloadProgress(55);
+      setDownloadStage('Caching POIs & safety telemetry...');
+      setDownloadProgress(65);
 
-      // 3. Safety & Emergency Helplines (70%)
+      // 3. Safety & Emergency Telemetry (75%)
       let safetyData = {
-        safetyScore: 91,
+        safetyScore: 92,
         riskLevel: 'LOW',
         radarTelemetry: {
           weatherRisk: 'Optimal Weather',
           roadConditions: 'Clear & Open',
           crowdDensity: 'Normal',
-          geofenceStatus: 'Safe Corridor',
+          geofenceStatus: 'Safe Sanctuary Perimeter',
           networkStatus: 'Cached Offline',
           emergencyProximity: '3.2 km Hospital'
         },
-        nearestHospital: { name: 'Civil Hospital (NABH Tier-1)', distanceKm: 3.2, phone: '+91-364-2224100' },
+        nearestHospital: { name: 'District Civil Trauma Centre (NABH)', distanceKm: 3.2, phone: '108' },
         policeStation: { name: 'Tourist Police Assistance Booth', helpline: '1363' }
       };
 
@@ -196,19 +204,66 @@ export const OfflineProvider = ({ children }) => {
           safetyData = { ...safetyData, ...safetyRes };
         }
       } catch (e) {}
-      setDownloadProgress(75);
+      setDownloadStage('Caching images & media assets...');
+      setDownloadProgress(80);
 
-      // 4. Pre-cache images (85%)
+      // 4. Pre-cache all required destination images (85%)
       const imagesToCache = [
         destinationData.image,
+        ...(destinationData.stays || []).map(s => s.image),
+        ...(places || []).map(p => p.image),
         extraData?.heritageSite?.image,
-        extraData?.trip?.image
+        extraData?.trip?.image,
+        'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1000&q=80'
       ].filter(Boolean);
 
       await cacheImagesOffline(imagesToCache);
-      setDownloadProgress(90);
+      setDownloadStage('Finalizing offline package...');
+      setDownloadProgress(95);
 
-      // 5. Structure & Save complete package to IndexedDB (100%)
+      // 5. Synthesize complete self-contained Trip if none exists for this destination
+      const destinationTrip = extraData.trip && (
+        extraData.trip.destination?.toLowerCase().includes(destName.toLowerCase()) || 
+        destName.toLowerCase().includes(extraData.trip.destination?.toLowerCase())
+      ) ? extraData.trip : {
+        id: `trip-${destId}`,
+        origin: 'Delhi',
+        destination: destName,
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+        totalDays: 4,
+        travellers: 2,
+        travelStyle: 'Eco-Heritage',
+        isConfirmed: true,
+        budgetBreakdown: {
+          transport: 3800,
+          stay: 7200,
+          food: 2800,
+          activities: 1600,
+          emergencyBuffer: 2000,
+          estimatedTotalCost: 17400
+        },
+        transportOptions: [
+          { mode: 'Train', name: 'Vande Bharat / Express Rail', co2Kg: 28, cost: 2400, duration: '6h 30m', selected: true },
+          { mode: 'Electric Bus', name: 'State Green EV Corridor', co2Kg: 18, cost: 1600, duration: '8h 00m' },
+          { mode: 'Flight', name: 'Solar Airport Link', co2Kg: 95, cost: 6400, duration: '1h 45m' }
+        ],
+        itinerary: [
+          { day: 1, title: 'Arrival & Eco-Check-in', activities: ['Arrival at sanctuary rail/transit hub', 'Check into certified solar eco-stay', 'Sunset orientation walk & local heritage cuisine'] },
+          { day: 2, title: 'Deep Cultural & Architectural Immersion', activities: ['Guided walking tour of ancient monuments and sanctums', 'Local community craft & artisanal workshop', 'Traditional classical cultural performance & stargazing'] },
+          { day: 3, title: 'Bio-Trails & Natural Wonders', activities: ['Morning biodiversity trail & ecological forest walk', 'Sacred riverfront/mountain reflection', 'Zero-waste organic dinner with host family'] },
+          { day: 4, title: 'Local Souvenirs & Sustainable Departure', activities: ['Visit GI-tagged village weavers market', 'Farewell interaction with conservation guides', 'Departure via low-carbon electric rail corridor'] }
+        ],
+        weatherSummary: {
+          condition: 'Optimal Season',
+          tempC: 25,
+          humidity: 58,
+          airQuality: 'Clean & Pure (AQI 32)'
+        },
+        safetyScore: 92
+      };
+
+      // 6. Structure & Save complete package to IndexedDB (100%)
       const offlinePackage = {
         destinationId: destId,
         destinationName: destName,
@@ -216,21 +271,26 @@ export const OfflineProvider = ({ children }) => {
         places: places.length > 0 ? places : (destinationData.places || []),
         safety: safetyData,
         emergency: NATIONAL_EMERGENCY_DIRECTORY,
-        trip: extraData.trip || null,
+        trip: destinationTrip,
         heritage: extraData.heritageSite || null,
+        images: imagesToCache,
         components: ['Places & POIs', 'Safety Radar', 'Emergency 24x7', 'Trip Itinerary', '360° Heritage Data'],
-        approximateSizeKB: Math.round(JSON.stringify(destinationData).length / 1024 + 45)
+        approximateSizeKB: Math.round(JSON.stringify(destinationData).length / 1024 + 48)
       };
 
       await saveOfflinePackage(offlinePackage);
+      setOfflineTrip(destinationTrip);
+      setIsSavedForOffline(true);
       await refreshOfflinePackages();
 
       setDownloadProgress(100);
+      setDownloadStage('✓ Available Offline');
       setDownloadStatus('READY');
       return { success: true, package: offlinePackage };
     } catch (err) {
       console.error('[Offline] Download failed:', err);
       setDownloadStatus('FAILED');
+      setDownloadStage('Download failed');
       setDownloadError(err.message || 'Failed to download destination offline package');
       return { success: false, message: err.message };
     } finally {
@@ -268,6 +328,19 @@ export const OfflineProvider = ({ children }) => {
 
   const effectiveOffline = !isRealOnline || isSimulatedOffline;
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__yatraxOffline = {
+        saveOfflinePackage,
+        getOfflinePackage,
+        getAllOfflinePackages,
+        saveTripOffline,
+        getSavedTripOffline,
+        downloadDestination
+      };
+    }
+  }, [downloadDestination]);
+
   return (
     <OfflineContext.Provider
       value={{
@@ -284,10 +357,12 @@ export const OfflineProvider = ({ children }) => {
         removeDestinationPackage,
         isDestinationDownloaded,
         downloadStatus,
+        downloadStage,
         downloadProgress,
         downloadError,
         activeDownloadingId,
         refreshOfflinePackages,
+        isDbReady,
         // Legacy trip support
         downloadTripForOffline,
         isSavedForOffline,

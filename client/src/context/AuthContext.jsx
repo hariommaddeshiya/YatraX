@@ -37,6 +37,15 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return;
     }
+    // If offline, preserve cached user from localStorage
+    if (!navigator.onLine) {
+      const cached = localStorage.getItem('safarai_user');
+      if (cached) {
+        try { setUser(JSON.parse(cached)); } catch(e) {}
+      }
+      setLoading(false);
+      return;
+    }
     try {
       const res = await axios.get(`${API_BASE}/auth/me`);
       if (res.data.success && res.data.user) {
@@ -44,9 +53,19 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('safarai_user', JSON.stringify(res.data.user));
       }
     } catch (err) {
-      console.warn('Auth token verification expired or failed:', err.message);
-      setToken(null);
-      setUser(null);
+      // Only clear token if server explicitly rejected with 401 or 403
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.warn('Auth token rejected by server:', err.message);
+        setToken(null);
+        setUser(null);
+      } else {
+        // Network error or offline: keep user logged in with local profile
+        console.log('[Auth] Preserving user profile in offline mode');
+        const cached = localStorage.getItem('safarai_user');
+        if (cached) {
+          try { setUser(JSON.parse(cached)); } catch(e) {}
+        }
+      }
     } finally {
       setLoading(false);
     }

@@ -167,7 +167,12 @@ export const HeritagePage = () => {
   const requestedSiteId = searchParams.get('site');
 
   const [heritageSites, setHeritageSites] = useState(DEFAULT_10_HERITAGE_SITES);
-  const [selectedSite, setSelectedSite] = useState(DEFAULT_10_HERITAGE_SITES[0]);
+  const [selectedSite, setSelectedSite] = useState(() => {
+    if (requestedSiteId) {
+      return DEFAULT_10_HERITAGE_SITES.find(s => s.id === requestedSiteId || s.name.toLowerCase().includes(requestedSiteId.toLowerCase())) || DEFAULT_10_HERITAGE_SITES[0];
+    }
+    return DEFAULT_10_HERITAGE_SITES[0];
+  });
   const [loading, setLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,6 +199,10 @@ export const HeritagePage = () => {
         }
       } catch (err) {
         console.warn('Backend heritage fetch fell back to master catalog:', err.message);
+        if (requestedSiteId) {
+          const matched = DEFAULT_10_HERITAGE_SITES.find(s => s.id === requestedSiteId || s.name.toLowerCase().includes(requestedSiteId.toLowerCase()));
+          if (matched) setSelectedSite(matched);
+        }
       }
     };
 

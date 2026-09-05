@@ -9,7 +9,8 @@ import {
   Leaf, 
   IndianRupee,
   Share2,
-  CloudSun
+  CloudSun,
+  Loader2
 } from 'lucide-react';
 import { useTrip } from '../context/TripContext.jsx';
 import { useOffline } from '../context/OfflineContext.jsx';
@@ -22,7 +23,14 @@ import { DataSourceBadge } from '../components/common/DataSourceBadge.jsx';
 
 export const PlannerPage = () => {
   const { activeTrip } = useTrip();
-  const { downloadTripForOffline, isSavedForOffline } = useOffline();
+  const { 
+    downloadDestination, 
+    isDestinationDownloaded, 
+    isSavedForOffline, 
+    downloadStatus, 
+    downloadProgress,
+    downloadStage 
+  } = useOffline();
   const resultsRef = useRef(null);
 
   const handleGenerated = (trip) => {
@@ -31,10 +39,17 @@ export const PlannerPage = () => {
     }
   };
 
+  const isDownloaded = activeTrip ? (isDestinationDownloaded(activeTrip.destination) || isSavedForOffline) : false;
+
   const handleDownloadOffline = async () => {
     if (activeTrip) {
-      await downloadTripForOffline(activeTrip);
-      alert('✅ Trip Package downloaded successfully! All itinerary items, emergency contacts & routes are now available offline via IndexedDB.');
+      await downloadDestination(
+        {
+          id: activeTrip.id || activeTrip.destination?.toLowerCase().replace(/\s+/g, '-'),
+          name: activeTrip.destination
+        },
+        { trip: activeTrip }
+      );
     }
   };
 
@@ -89,10 +104,25 @@ export const PlannerPage = () => {
             <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
               <button
                 onClick={handleDownloadOffline}
-                className="w-full sm:w-auto px-5 py-3 bg-forest-800 hover:bg-forest-900 text-white text-xs font-sora font-bold rounded-2xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
+                disabled={downloadStatus === 'DOWNLOADING'}
+                className="w-full sm:w-auto px-5 py-3 bg-forest-800 hover:bg-forest-900 text-white text-xs font-sora font-bold rounded-2xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
               >
-                <Download className="w-4 h-4 text-emerald-300" />
-                <span>{isSavedForOffline ? 'Cached for Offline Use' : 'Download Trip for Offline Use'}</span>
+                {downloadStatus === 'DOWNLOADING' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-emerald-300 animate-spin" />
+                    <span>{downloadStage || `Downloading… ${downloadProgress}%`}</span>
+                  </>
+                ) : isDownloaded ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <span>✓ Available Offline in IndexedDB</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 text-emerald-300" />
+                    <span>Download Package for Offline Use</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

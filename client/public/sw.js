@@ -88,12 +88,15 @@ self.addEventListener('fetch', (event) => {
           return networkRes;
         })
         .catch(async () => {
-          // Offline fallback: serve cached index.html
-          const cachedPage = await caches.match(req);
+          // Offline fallback: serve cached index.html (ignoring search query params)
+          const cachedPage = await caches.match(req, { ignoreSearch: true });
           if (cachedPage) return cachedPage;
-          const shellIndex = await caches.match('/index.html');
+          const shellIndex = await caches.match('/index.html', { ignoreSearch: true });
           if (shellIndex) return shellIndex;
-          return caches.match('/');
+          const rootMatch = await caches.match('/', { ignoreSearch: true });
+          if (rootMatch) return rootMatch;
+          const shellCache = await caches.open(CACHE_SHELL);
+          return (await shellCache.match('/index.html')) || (await shellCache.match('/'));
         })
     );
     return;
@@ -125,27 +128,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. Images (Unsplash, local media, svgs) -> Cache-First
+  // 5. Images (Unsplash, local media, svgs) -> Cache-First with opaque response support
   const isImage = req.destination === 'image' || 
                   url.hostname.includes('unsplash.com') ||
                   /\.(png|jpg|jpeg|svg|webp|gif|ico)$/i.test(url.pathname);
 
   if (isImage) {
     event.respondWith(
-      caches.match(req).then((cachedRes) => {
+      caches.match(req).then(async (cachedRes) => {
         if (cachedRes) return cachedRes;
+
+        // Try fuzzy match ignoring query parameters if needed
+        const fuzzyMatch = await caches.match(req, { ignoreSearch: true });
+        if (fuzzyMatch) return fuzzyMatch;
 
         return fetch(req)
           .then((networkRes) => {
-            if (networkRes.ok) {
+            // Support both standard OK responses and cross-origin opaque responses (Unsplash)
+            if (networkRes.ok || networkRes.type === 'opaque') {
               const resClone = networkRes.clone();
               caches.open(CACHE_IMAGES).then((cache) => cache.put(req, resClone));
             }
             return networkRes;
           })
-          .catch(() => {
+          .catch(async () => {
             // Optional fallback placeholder
-            return caches.match('/logo.svg');
+            return (await caches.match('/logo.svg')) || Response.error();
           });
       })
     );
@@ -161,10 +169,10 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset) {
     event.respondWith(
-      caches.match(req).then((cachedRes) => {
+      caches.match(req, { ignoreSearch: true }).then((cachedRes) => {
         const fetchPromise = fetch(req)
           .then((networkRes) => {
-            if (networkRes.ok) {
+            if (networkRes.ok || networkRes.type === 'opaque') {
               const resClone = networkRes.clone();
               caches.open(CACHE_STATIC).then((cache) => cache.put(req, resClone));
             }

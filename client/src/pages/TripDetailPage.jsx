@@ -16,15 +16,17 @@ import {
   CheckCircle2,
   Loader2
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useTrip } from '../context/TripContext.jsx';
 import { useOffline } from '../context/OfflineContext.jsx';
+import { getSavedTripOffline, getLatestOfflinePackage } from '../utils/indexedDb.js';
 import { TransportSelector } from '../components/planner/TransportSelector.jsx';
 import { BudgetDashboard } from '../components/planner/BudgetDashboard.jsx';
 import { ItineraryTimeline } from '../components/planner/ItineraryTimeline.jsx';
 import { DataSourceBadge } from '../components/common/DataSourceBadge.jsx';
 
 export const TripDetailPage = () => {
-  const { activeTrip } = useTrip();
+  const { activeTrip, setActiveTrip, loading: tripLoading } = useTrip();
   const { 
     isOnline, 
     isOffline, 
@@ -32,10 +34,111 @@ export const TripDetailPage = () => {
     isDestinationDownloaded, 
     downloadStatus, 
     downloadProgress, 
-    isSavedForOffline 
+    downloadStage,
+    isSavedForOffline,
+    offlinePackages,
+    offlineTrip
   } = useOffline();
 
-  if (!activeTrip) {
+  const [localTrip, setLocalTrip] = useState(activeTrip || offlineTrip || null);
+  const [loadingLocal, setLoadingLocal] = useState(!activeTrip && !offlineTrip);
+
+  // Hydrate from offlineTrip or IndexedDB if offline or activeTrip is null
+  useEffect(() => {
+    if (isOffline) {
+      if (offlineTrip) {
+        setLocalTrip(offlineTrip);
+        setActiveTrip(offlineTrip);
+        setLoadingLocal(false);
+        return;
+      }
+      getSavedTripOffline().then((saved) => {
+        if (saved) {
+          setLocalTrip(saved);
+          setActiveTrip(saved);
+        } else {
+          getLatestOfflinePackage().then((pkg) => {
+            if (pkg && pkg.trip) {
+              setLocalTrip(pkg.trip);
+              setActiveTrip(pkg.trip);
+            }
+            setLoadingLocal(false);
+          }).catch(() => setLoadingLocal(false));
+          return;
+        }
+        setLoadingLocal(false);
+      }).catch(() => setLoadingLocal(false));
+      return;
+    }
+
+    if (activeTrip) {
+      setLocalTrip(activeTrip);
+      setLoadingLocal(false);
+      return;
+    }
+
+    if (offlineTrip) {
+      setLocalTrip(offlineTrip);
+      setActiveTrip(offlineTrip);
+      setLoadingLocal(false);
+      return;
+    }
+
+    // Direct read from IndexedDB
+    getSavedTripOffline().then((saved) => {
+      if (saved) {
+        setLocalTrip(saved);
+        setActiveTrip(saved);
+      } else {
+        getLatestOfflinePackage().then((pkg) => {
+          if (pkg && pkg.trip) {
+            setLocalTrip(pkg.trip);
+            setActiveTrip(pkg.trip);
+          }
+          setLoadingLocal(false);
+        }).catch(() => setLoadingLocal(false));
+        return;
+      }
+      setLoadingLocal(false);
+    }).catch(() => setLoadingLocal(false));
+  }, [activeTrip, offlineTrip, setActiveTrip, isOffline]);
+
+  const effectiveTrip = isOffline 
+    ? (offlineTrip || localTrip || activeTrip) 
+    : (activeTrip || localTrip || offlineTrip);
+
+  if (loadingLocal || tripLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center space-y-3">
+        <Loader2 className="w-8 h-8 text-forest-800 animate-spin mx-auto" />
+        <p className="text-xs font-sora font-semibold text-slate-500">Loading sanctuary journey...</p>
+      </div>
+    );
+  }
+
+  if (!effectiveTrip) {
+    if (isOffline) {
+      return (
+        <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
+            <WifiOff className="w-6 h-6" />
+          </div>
+          <h2 className="text-2xl font-sora font-bold text-slate-800">This destination hasn't been downloaded for offline use.</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Please reconnect to the internet to download itineraries or plan new sustainable journeys.
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-forest-800 hover:bg-forest-900 text-white font-bold rounded-2xl text-xs shadow-md cursor-pointer"
+            >
+              <span>Reconnect & Retry</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
         <h2 className="text-2xl font-sora font-bold text-slate-800">No Active Trip Found</h2>
@@ -51,19 +154,19 @@ export const TripDetailPage = () => {
     );
   }
 
-  const isDownloaded = isDestinationDownloaded(activeTrip.destination) || isSavedForOffline;
+  const isDownloaded = isDestinationDownloaded(effectiveTrip.destination) || isSavedForOffline;
 
   const handleDownload = async () => {
     await downloadDestination(
       { 
-        id: activeTrip.id || activeTrip.destination.toLowerCase().replace(/\s+/g, '-'), 
-        name: activeTrip.destination 
+        id: effectiveTrip.id || effectiveTrip.destination.toLowerCase().replace(/\s+/g, '-'), 
+        name: effectiveTrip.destination 
       },
-      { trip: activeTrip }
+      { trip: effectiveTrip }
     );
   };
 
-  const weatherData = activeTrip.weatherSummary || activeTrip.weather?.current;
+  const weatherData = effectiveTrip.weatherSummary || effectiveTrip.weather?.current;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -83,14 +186,14 @@ export const TripDetailPage = () => {
         <div className="space-y-2 relative z-10">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase font-mono tracking-wider ${
-              activeTrip.isConfirmed 
+              effectiveTrip.isConfirmed 
                 ? 'bg-emerald-500 text-white shadow-xs' 
                 : 'bg-forest-800 text-emerald-300'
             }`}>
-              {activeTrip.isConfirmed ? '✓ CONFIRMED ACTIVE JOURNEY' : 'Live Itinerary'}
+              {effectiveTrip.isConfirmed ? '✓ CONFIRMED ACTIVE JOURNEY' : 'Live Itinerary'}
             </span>
             <span className="text-xs text-amber-300 font-mono font-bold">
-              #{activeTrip.id?.slice(0, 10)}
+              #{effectiveTrip.id?.slice(0, 10)}
             </span>
             <DataSourceBadge 
               type={isOffline ? "OFFLINE CACHED" : "LIVE API DATA"} 
@@ -99,15 +202,15 @@ export const TripDetailPage = () => {
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-sora font-extrabold text-white">
-            {activeTrip.origin} ➔ {activeTrip.destination}
+            {effectiveTrip.origin} ➔ {effectiveTrip.destination}
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1 font-medium">
-            <span>📅 {activeTrip.totalDays || 6} Days ({activeTrip.startDate} to {activeTrip.endDate})</span>
+            <span>📅 {effectiveTrip.totalDays || 4} Days ({effectiveTrip.startDate} to {effectiveTrip.endDate})</span>
             <span>•</span>
-            <span>👥 {activeTrip.travellers || 2} Travellers</span>
+            <span>👥 {effectiveTrip.travellers || 2} Travellers</span>
             <span>•</span>
-            <span className="text-emerald-400 font-semibold">🌿 Style: {activeTrip.travelStyle || 'Eco'}</span>
+            <span className="text-emerald-400 font-semibold">🌿 Style: {effectiveTrip.travelStyle || 'Eco'}</span>
           </div>
         </div>
 
@@ -155,7 +258,7 @@ export const TripDetailPage = () => {
             </div>
             <div>
               <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <span>{activeTrip.destination} Weather: {weatherData.temperatureC || 24}°C</span>
+                <span>{effectiveTrip.destination} Weather: {weatherData.temperatureC || 24}°C</span>
                 <span className="text-[10px] text-slate-500 font-normal font-mono">({weatherData.weatherCondition || 'Clear'})</span>
               </div>
               <span className="text-[11px] text-slate-600">
