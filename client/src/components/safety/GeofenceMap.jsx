@@ -1,8 +1,10 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTrip } from '../../context/TripContext.jsx';
+import { useOffline } from '../../context/OfflineContext.jsx';
 import { DataSourceBadge } from '../common/DataSourceBadge.jsx';
+import { getSafetyOffline, saveSafetyOffline } from '../../utils/indexedDb.js';
 
 import api from '../../utils/api.js';
 
@@ -16,23 +18,41 @@ const createCustomIcon = (color, text) => L.divIcon({
   iconAnchor: [40, 15]
 });
 
+const DEFAULT_OFFLINE_ZONES = [
+  {
+    id: 'zone-nohkalikai-01',
+    name: 'Nohkalikai Gorge Risk Zone',
+    riskLevel: 'HIGH',
+    riskType: 'FLASH_FLOOD_AND_CLIFF',
+    radiusMeters: 800,
+    coordinates: { lat: 25.2755, lng: 91.6840 }
+  }
+];
+
 export const GeofenceMap = () => {
   const { activeTrip } = useTrip();
-  const [activeZones, setActiveZones] = React.useState([]);
+  const { isOffline } = useOffline();
+  const [activeZones, setActiveZones] = React.useState(DEFAULT_OFFLINE_ZONES);
 
   React.useEffect(() => {
     const fetchZones = async () => {
       try {
         const res = await api.get('/admin/zones');
-        if (res.success) {
-          setActiveZones(res.zones || []);
+        if (res.success && res.zones?.length > 0) {
+          setActiveZones(res.zones);
+          saveSafetyOffline('admin-zones', res.zones).catch(() => {});
         }
       } catch(err) {
-        console.error(err);
+        console.warn('[GeofenceMap] Falling back to offline cached zones:', err);
+        try {
+          const cached = await getSafetyOffline('admin-zones');
+          if (cached && cached.length > 0) {
+            setActiveZones(cached);
+          }
+        } catch(e) {}
       }
     };
     fetchZones();
-    // Simulate real-time by polling or socket.io here if needed
   }, []);
 
   // Coordinates centered on Meghalaya (or destination)
@@ -67,7 +87,10 @@ export const GeofenceMap = () => {
             <h3 className="font-serif text-xl font-bold text-slate-800">
               Interactive Geofence & Emergency Services Map
             </h3>
-            <DataSourceBadge type="LIVE API DATA" source="OpenStreetMap Overpass" />
+            <DataSourceBadge 
+              type={isOffline ? "OFFLINE CACHED" : "LIVE API DATA"} 
+              source={isOffline ? "IndexedDB Spatial Geofences" : "OpenStreetMap Overpass"} 
+            />
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Spatial hazard boundaries, verified NABH trauma hospitals, police booths & EV grid.
@@ -81,6 +104,11 @@ export const GeofenceMap = () => {
 
       {/* Leaflet Map Frame */}
       <div className="w-full h-[280px] sm:h-[360px] md:h-[450px] rounded-2xl overflow-hidden border-2 border-sand-300 shadow-inner relative z-0">
+        {isOffline && (
+          <div className="absolute top-3 left-3 z-[1000] bg-amber-950/90 text-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-mono border border-amber-500/40 backdrop-blur-xs shadow-md">
+            <span>📡 Offline Map Mode • Showing saved POIs & geofences</span>
+          </div>
+        )}
         <MapContainer 
           center={[centerLat, centerLng]} 
           zoom={10} 

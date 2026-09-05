@@ -12,7 +12,9 @@ import {
   Sparkles,
   ArrowRight,
   WifiOff,
-  Wifi
+  Wifi,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { useTrip } from '../context/TripContext.jsx';
 import { useOffline } from '../context/OfflineContext.jsx';
@@ -23,7 +25,15 @@ import { DataSourceBadge } from '../components/common/DataSourceBadge.jsx';
 
 export const TripDetailPage = () => {
   const { activeTrip } = useTrip();
-  const { isOnline, downloadTripForOffline, isSavedForOffline } = useOffline();
+  const { 
+    isOnline, 
+    isOffline, 
+    downloadDestination, 
+    isDestinationDownloaded, 
+    downloadStatus, 
+    downloadProgress, 
+    isSavedForOffline 
+  } = useOffline();
 
   if (!activeTrip) {
     return (
@@ -41,9 +51,16 @@ export const TripDetailPage = () => {
     );
   }
 
+  const isDownloaded = isDestinationDownloaded(activeTrip.destination) || isSavedForOffline;
+
   const handleDownload = async () => {
-    await downloadTripForOffline(activeTrip);
-    alert('✅ Trip Package saved to IndexedDB for offline access.');
+    await downloadDestination(
+      { 
+        id: activeTrip.id || activeTrip.destination.toLowerCase().replace(/\s+/g, '-'), 
+        name: activeTrip.destination 
+      },
+      { trip: activeTrip }
+    );
   };
 
   const weatherData = activeTrip.weatherSummary || activeTrip.weather?.current;
@@ -64,7 +81,7 @@ export const TripDetailPage = () => {
         <div className="absolute -top-12 -right-12 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="space-y-2 relative z-10">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase font-mono tracking-wider ${
               activeTrip.isConfirmed 
                 ? 'bg-emerald-500 text-white shadow-xs' 
@@ -75,7 +92,10 @@ export const TripDetailPage = () => {
             <span className="text-xs text-amber-300 font-mono font-bold">
               #{activeTrip.id?.slice(0, 10)}
             </span>
-            <DataSourceBadge type="LIVE API DATA" source="Open-Meteo & IRCTC" />
+            <DataSourceBadge 
+              type={isOffline ? "OFFLINE CACHED" : "LIVE API DATA"} 
+              source={isOffline ? "IndexedDB Saved Itinerary" : "Open-Meteo & IRCTC"} 
+            />
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-sora font-extrabold text-white">
@@ -103,10 +123,25 @@ export const TripDetailPage = () => {
 
           <button
             onClick={handleDownload}
-            className="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-sora font-bold rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 border border-emerald-400 cursor-pointer"
+            disabled={downloadStatus === 'DOWNLOADING'}
+            className="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-sora font-bold rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 border border-emerald-400 cursor-pointer disabled:opacity-60"
           >
-            <Download className="w-4 h-4 text-emerald-200" />
-            <span>{isSavedForOffline ? 'Cached in IndexedDB' : 'Download for Offline Mode'}</span>
+            {downloadStatus === 'DOWNLOADING' ? (
+              <>
+                <Loader2 className="w-4 h-4 text-emerald-200 animate-spin" />
+                <span>Downloading… {downloadProgress}%</span>
+              </>
+            ) : isDownloaded ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>Available Offline in IndexedDB</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-emerald-200" />
+                <span>Download for Offline Mode</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -124,7 +159,9 @@ export const TripDetailPage = () => {
                 <span className="text-[10px] text-slate-500 font-normal font-mono">({weatherData.weatherCondition || 'Clear'})</span>
               </div>
               <span className="text-[11px] text-slate-600">
-                {weatherData.riskReason || 'Optimal atmospheric conditions for eco-trail excursions.'}
+                {isOffline
+                  ? 'Showing last saved weather forecast from offline package.'
+                  : (weatherData.riskReason || 'Optimal atmospheric conditions for eco-trail excursions.')}
               </span>
             </div>
           </div>

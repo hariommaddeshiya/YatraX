@@ -14,10 +14,13 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api.js';
 import { useTrip } from '../../context/TripContext.jsx';
+import { useOffline } from '../../context/OfflineContext.jsx';
 import { DataSourceBadge } from '../common/DataSourceBadge.jsx';
+import { getSafetyOffline, saveSafetyOffline } from '../../utils/indexedDb.js';
 
 export const LiveSafetyRadar = () => {
   const { activeTrip } = useTrip();
+  const { isOffline } = useOffline();
   const [safetyData, setSafetyData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,22 +33,29 @@ export const LiveSafetyRadar = () => {
             weatherRisk: activeTrip?.weatherSummary?.riskLevel || 'LOW',
             crowdSurge: 'LOW',
             isGeofenced: isGeofenced ? 'true' : 'false',
-            networkAvailable: 'true',
+            networkAvailable: !isOffline ? 'true' : 'false',
             distanceKm: 3.2
           }
         });
         if (res.success) {
           setSafetyData(res);
+          saveSafetyOffline('live-safety-score', res).catch(() => {});
         }
       } catch (err) {
-        console.error('Error fetching safety data:', err);
+        console.warn('[LiveSafetyRadar] Network fetch failed, reading from IndexedDB:', err);
+        try {
+          const cached = await getSafetyOffline('live-safety-score');
+          if (cached) {
+            setSafetyData(cached);
+          }
+        } catch(e) {}
       } finally {
         setLoading(false);
       }
     };
 
     fetchSafetyScore();
-  }, [activeTrip]);
+  }, [activeTrip, isOffline]);
 
   const score = activeTrip?.safetyScore || safetyData?.safetyScore || 91;
   const isHazardBreached = score < 80;
@@ -60,7 +70,10 @@ export const LiveSafetyRadar = () => {
             <h3 className="font-serif text-xl font-bold text-slate-800">
               Live Tourist Safety & Risk Radar
             </h3>
-            <DataSourceBadge type="LIVE API DATA" source="GPS & Sensor Grid" />
+            <DataSourceBadge 
+              type={isOffline ? "OFFLINE CACHED" : "LIVE API DATA"} 
+              source={isOffline ? "IndexedDB Telemetry" : "GPS & Sensor Grid"} 
+            />
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Real-time geofence perimeter monitoring, distance to NABH medical facilities & emergency response.
@@ -167,10 +180,14 @@ export const LiveSafetyRadar = () => {
         <div className="bg-sand-50 p-4 rounded-2xl border border-sand-300">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase">Cellular Network</span>
-            <Wifi className="w-4 h-4 text-emerald-600" />
+            {isOffline ? <WifiOff className="w-4 h-4 text-amber-600" /> : <Wifi className="w-4 h-4 text-emerald-600" />}
           </div>
-          <div className="font-bold text-sm text-slate-900">🟢 5G / 4G Active</div>
-          <span className="text-[10px] text-slate-500">IndexedDB Cached</span>
+          <div className="font-bold text-sm text-slate-900">
+            {isOffline ? '🟠 Offline Mode' : '🟢 5G / 4G Active'}
+          </div>
+          <span className="text-[10px] text-slate-500">
+            {isOffline ? 'IndexedDB Local Data' : 'Live Gateway Synced'}
+          </span>
         </div>
 
         <div className="bg-sand-50 p-4 rounded-2xl border border-sand-300">

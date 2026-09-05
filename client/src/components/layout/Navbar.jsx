@@ -25,10 +25,17 @@ import {
   User,
   Crown,
   LogOut,
-  Settings
+  Settings,
+  Download,
+  CheckCircle2,
+  HardDriveDownload,
+  Database,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { useOffline } from '../../context/OfflineContext.jsx';
+import { useTrip } from '../../context/TripContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 // Custom India Outline / Map Icon
@@ -43,23 +50,74 @@ export const Navbar = ({ onOpenSos }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isConnected } = useSocket();
-  const { isOnline, toggleSimulatedOffline } = useOffline();
+  const { 
+    isOnline, 
+    isRealOnline,
+    isOffline,
+    toggleSimulatedOffline, 
+    offlinePackages, 
+    downloadDestination, 
+    removeDestinationPackage, 
+    isDestinationDownloaded, 
+    downloadStatus, 
+    downloadProgress, 
+    downloadError 
+  } = useOffline();
+  const { activeTrip, destinations } = useTrip();
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [offlineMenuOpen, setOfflineMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const offlineMenuRef = useRef(null);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setUserMenuOpen(false);
       }
+      if (offlineMenuRef.current && !offlineMenuRef.current.contains(e.target)) {
+        setOfflineMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Determine current active destination from route or context
+  const getCurrentDestination = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const siteParam = searchParams.get('site');
+    const destParam = searchParams.get('dest');
+
+    if (siteParam) {
+      const match = (destinations || []).find(d => d.id === siteParam || d.name?.toLowerCase().includes(siteParam.toLowerCase()));
+      if (match) return match;
+      return { id: siteParam, name: siteParam.replace(/-/g, ' ').toUpperCase() };
+    }
+    if (destParam) {
+      const match = (destinations || []).find(d => d.name?.toLowerCase().includes(destParam.toLowerCase()));
+      if (match) return match;
+      return { id: destParam.toLowerCase().replace(/\s+/g, '-'), name: destParam };
+    }
+    if (activeTrip?.destination) {
+      const match = (destinations || []).find(d => 
+        d.name?.toLowerCase().includes(activeTrip.destination.toLowerCase()) || 
+        activeTrip.destination.toLowerCase().includes(d.name?.toLowerCase())
+      );
+      if (match) return { ...match, trip: activeTrip };
+      return { id: 'active-trip', name: activeTrip.destination, trip: activeTrip };
+    }
+    return null;
+  };
+
+  const currentDest = getCurrentDestination();
+  const isCurrentDownloaded = currentDest ? isDestinationDownloaded(currentDest.id || currentDest.name) : false;
+  const currentPackage = currentDest 
+    ? offlinePackages.find(p => p.destinationId === currentDest.id || p.destinationName.toLowerCase() === currentDest.name?.toLowerCase()) 
+    : null;
 
   const menuSections = [
     {
@@ -109,38 +167,34 @@ export const Navbar = ({ onOpenSos }) => {
   return (
     <>
       <header className="sticky top-0 z-40 glass-nav transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-18 sm:h-20">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
             
             {/* Left: Menu Drawer Toggle + Modern Brand Logo */}
-            <div className="flex items-center gap-3 sm:gap-5">
+            <div className="flex items-center gap-2 sm:gap-3.5">
               
               {/* Slide-out Menu Trigger */}
               <button
                 onClick={() => setDrawerOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-white/70 hover:bg-forest-800 text-slate-800 hover:text-white border border-sand-300 hover:border-forest-700 rounded-2xl text-xs font-bold transition-all shadow-2xs group active:scale-95 cursor-pointer"
+                className="flex items-center justify-center p-1.5 sm:px-3 sm:py-2 bg-white/80 hover:bg-forest-800 text-slate-800 hover:text-white border border-sand-300 hover:border-forest-700 rounded-xl sm:rounded-2xl text-xs font-bold transition-all shadow-2xs group active:scale-95 cursor-pointer shrink-0"
                 title="Open Navigation Menu"
+                aria-label="Open Navigation Menu"
               >
                 <Menu className="w-4 h-4 text-forest-800 group-hover:text-white transition-colors" />
-                <span className="hidden md:inline font-sora">Menu</span>
+                <span className="hidden md:inline font-sora ml-1.5">Menu</span>
               </button>
 
               {/* Brand Logo */}
-              <Link to="/" className="flex items-center gap-3 group">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 flex items-center justify-center text-white shadow-glass group-hover:scale-105 transition-transform border border-emerald-500/30">
-                  <Compass className="w-5 h-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-300" />
+              <Link to="/" className="flex items-center gap-2 group shrink-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 flex items-center justify-center text-white shadow-glass group-hover:scale-105 transition-transform border border-emerald-500/30 shrink-0">
+                  <Compass className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-300" />
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-0.5 leading-none">
-                    <span className="font-sora text-xl sm:text-2xl font-black tracking-tight text-forest-950">
-                      Yatra
-                    </span>
-                    <span className="font-sora text-2xl sm:text-3xl font-black italic tracking-tighter bg-gradient-to-tr from-saffron-500 via-amber-400 to-emerald-400 bg-clip-text text-transparent transform -skew-x-6 drop-shadow-xs">
-                      X
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-medium tracking-wide">
-                    Multi-Modal Travel & AI Planner
+                <div className="flex items-baseline overflow-visible py-0.5 select-none">
+                  <span className="font-sora text-lg sm:text-2xl font-black tracking-tight text-forest-950">
+                    Yatra
+                  </span>
+                  <span className="inline-block font-sora text-xl sm:text-3xl font-black italic tracking-normal bg-gradient-to-tr from-saffron-500 via-amber-400 to-emerald-400 bg-clip-text text-transparent pl-0.5 pr-2.5 pt-1.5 pb-0.5 leading-normal overflow-visible drop-shadow-xs">
+                    X
                   </span>
                 </div>
               </Link>
@@ -203,14 +257,14 @@ export const Navbar = ({ onOpenSos }) => {
             </nav>
 
             {/* Right: User Profile / Get Started, Offline Toggle & SOS Trigger */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               
               {/* Explorer User Menu or Get Started Button */}
               {isAuthenticated ? (
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setUserMenuOpen(prev => !prev)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/90 hover:bg-white border border-sand-300 text-slate-800 text-xs font-sora font-bold shadow-2xs transition-all cursor-pointer group"
+                    className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl bg-white/90 hover:bg-white border border-sand-300 text-slate-800 text-xs font-sora font-bold shadow-2xs transition-all cursor-pointer group shrink-0"
                   >
                     <span className="text-sm">{user?.avatar || '🇮🇳'}</span>
                     <span className="hidden sm:inline text-forest-950 font-bold">{user?.username || user?.name || 'Explorer'}</span>
@@ -222,7 +276,7 @@ export const Navbar = ({ onOpenSos }) => {
 
                   {/* Dropdown Menu with Logout & Profile */}
                   {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-forest-950 rounded-3xl shadow-2xl border border-sand-300 dark:border-white/10 p-2 z-50 animate-scaleUp text-xs space-y-1">
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-forest-950 rounded-2xl sm:rounded-3xl shadow-2xl border border-sand-300 dark:border-white/10 p-2 z-50 animate-scaleUp text-xs space-y-1">
                       <div className="p-3 border-b border-sand-200 dark:border-white/10">
                         <p className="font-sora font-bold text-slate-900 dark:text-white truncate">
                           {user?.name || user?.username}
@@ -276,29 +330,241 @@ export const Navbar = ({ onOpenSos }) => {
               ) : (
                 <button
                   onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-forest-800 hover:bg-forest-900 text-white border border-emerald-600/30 text-xs font-sora font-bold transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl bg-forest-800 hover:bg-forest-900 text-white border border-emerald-600/30 text-xs font-sora font-bold transition-all shadow-sm hover:shadow-md active:scale-95 cursor-pointer shrink-0"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Get Started</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span className="hidden sm:inline">Get Started</span>
+                  <span className="sm:hidden">Sign In</span>
                 </button>
               )}
 
-              {/* Network Toggle Button (Online / Offline Mode) */}
+              {/* Download Offline Button & Popover */}
+              <div className="relative" ref={offlineMenuRef}>
+                <button
+                  onClick={() => setOfflineMenuOpen(prev => !prev)}
+                  className={`flex items-center gap-1 p-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-sora font-bold transition-all shadow-2xs cursor-pointer border active:scale-95 shrink-0 ${
+                    downloadStatus === 'DOWNLOADING'
+                      ? 'bg-amber-100 text-amber-900 border-amber-400 animate-pulse'
+                      : isOffline
+                      ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400/30'
+                      : isCurrentDownloaded
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-white/80 hover:bg-forest-800 hover:text-white text-slate-700 border-sand-300 hover:border-forest-700 group'
+                  }`}
+                  title={isCurrentDownloaded ? 'Destination downloaded and available offline' : 'Download current destination for offline use'}
+                >
+                  {downloadStatus === 'DOWNLOADING' ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 text-amber-700 animate-spin shrink-0" />
+                      <span className="text-[10px] sm:text-[11px] font-mono">{downloadProgress}%</span>
+                    </>
+                  ) : downloadStatus === 'READY' ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="hidden sm:inline text-[11px]">Ready ✓</span>
+                    </>
+                  ) : isOffline ? (
+                    <>
+                      <HardDriveDownload className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <span className="hidden sm:inline text-[11px]">Offline</span>
+                    </>
+                  ) : isCurrentDownloaded ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="hidden sm:inline text-[11px]">Saved ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5 text-forest-700 group-hover:text-white transition-colors shrink-0" />
+                      <span className="hidden sm:inline text-[11px]">Offline</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Dropdown / Popover for Offline Management */}
+                {offlineMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:w-84 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-sand-300 p-3 sm:p-4 z-50 animate-scaleUp text-xs space-y-3">
+                    {/* Popover Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-sand-200">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-4 h-4 text-emerald-600" />
+                        <h4 className="font-sora font-bold text-slate-900">PWA Offline Storage</h4>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-sand-100 text-slate-600">
+                        {offlinePackages.length} Saved
+                      </span>
+                    </div>
+
+                    {/* Mobile Quick Offline Simulation Toggle */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-sand-50 border border-sand-200 sm:hidden">
+                      <div className="flex items-center gap-1.5">
+                        {isOnline ? (
+                          <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <WifiOff className="w-3.5 h-3.5 text-amber-700" />
+                        )}
+                        <span className="text-[11px] font-sora font-semibold text-slate-700">
+                          {isOnline ? 'Online Mode' : 'Offline Mode Active'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={toggleSimulatedOffline}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold font-mono transition-colors ${
+                          isOnline
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
+                        }`}
+                      >
+                        {isOnline ? 'Test Offline' : 'Go Online'}
+                      </button>
+                    </div>
+
+                    {/* Target Destination Section */}
+                    {currentDest ? (
+                      <div className="bg-sand-50 rounded-2xl p-3 border border-sand-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Active Sanctuary</span>
+                          {isCurrentDownloaded ? (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Available Offline</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">
+                              Not Downloaded
+                            </span>
+                          )}
+                        </div>
+
+                        <h5 className="font-sora font-bold text-slate-900 text-sm">{currentDest.name}</h5>
+
+                        {isCurrentDownloaded && currentPackage ? (
+                          <div className="space-y-1.5 text-[11px] text-slate-600 pt-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <span>Downloaded:</span>
+                              <strong className="text-slate-800 font-medium text-right text-[10px]">
+                                {currentPackage.components?.join(', ') || 'Places, Safety, Trip, 360'}
+                              </strong>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Approx. Size:</span>
+                              <strong className="text-slate-800 font-mono">~{currentPackage.approximateSizeKB || 52} KB</strong>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Last Updated:</span>
+                              <span className="text-slate-500 font-mono">
+                                {new Date(currentPackage.downloadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            </div>
+
+                            <div className="pt-2">
+                              <button
+                                onClick={async () => {
+                                  await removeDestinationPackage(currentPackage.destinationId);
+                                }}
+                                className="w-full py-1.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-sora font-bold text-[11px] flex items-center justify-center gap-1.5 border border-red-200 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                <span>Remove Offline Data</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-1">
+                            <button
+                              disabled={downloadStatus === 'DOWNLOADING'}
+                              onClick={async () => {
+                                await downloadDestination(currentDest, { trip: activeTrip });
+                              }}
+                              className="w-full py-2 px-3 rounded-xl bg-forest-800 hover:bg-forest-900 text-white font-sora font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {downloadStatus === 'DOWNLOADING' ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>Downloading package...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Download for Offline Use</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-sand-50 rounded-2xl p-3 border border-sand-200 text-slate-600 space-y-2">
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Open a destination or trip first to download it for offline use.
+                        </p>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Quick Downloads</span>
+                          <div className="grid grid-cols-1 gap-1">
+                            {(destinations || []).slice(0, 3).map((d) => (
+                              <button
+                                key={d.id}
+                                onClick={() => downloadDestination(d, { trip: activeTrip })}
+                                className="w-full text-left px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-sand-200 text-[11px] font-sora font-semibold text-slate-800 flex items-center justify-between cursor-pointer"
+                              >
+                                <span className="truncate">{d.name}</span>
+                                <Download className="w-3 h-3 text-forest-700 shrink-0 ml-1" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* List of previously downloaded destinations */}
+                    {offlinePackages.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">All Saved Offline Sanctuaries</span>
+                        <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                          {offlinePackages.map((pkg) => (
+                            <div
+                              key={pkg.destinationId}
+                              className="flex items-center justify-between p-2 rounded-xl bg-sand-50 border border-sand-200 text-[11px]"
+                            >
+                              <div className="truncate pr-2">
+                                <p className="font-sora font-bold text-slate-800 truncate">{pkg.destinationName}</p>
+                                <span className="text-[9px] text-slate-400 font-mono">
+                                  {new Date(pkg.downloadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => removeDestinationPackage(pkg.destinationId)}
+                                className="p-1 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded-lg transition-colors shrink-0"
+                                title="Delete offline data"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Network Toggle Button (Online / Offline Mode) - Accessible on desktop navbar and inside offline popover on mobile */}
               <button
                 onClick={toggleSimulatedOffline}
-                className={`p-2 rounded-xl border text-xs font-medium transition-all shadow-2xs flex items-center gap-1 ${
+                className={`hidden sm:flex p-1.5 sm:p-2 rounded-xl border text-xs font-medium transition-all shadow-2xs items-center gap-1 shrink-0 ${
                   isOnline 
                     ? 'bg-white/70 hover:bg-sand-100 text-slate-700 border-sand-300' 
                     : 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400/30'
                 }`}
                 title={isOnline ? 'Active Online (Click to test Offline Mode)' : 'Simulated Offline Mode Active'}
+                aria-label={isOnline ? 'Simulate Offline Mode' : 'Switch to Online Mode'}
               >
                 {isOnline ? (
-                  <Wifi className="w-4 h-4 text-emerald-600" />
+                  <Wifi className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
                 ) : (
                   <>
-                    <WifiOff className="w-4 h-4 text-amber-700" />
-                    <span className="hidden sm:inline font-bold text-[10px]">OFFLINE</span>
+                    <WifiOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700" />
+                    <span className="hidden md:inline font-bold text-[10px]">OFFLINE</span>
                   </>
                 )}
               </button>
@@ -306,10 +572,11 @@ export const Navbar = ({ onOpenSos }) => {
               {/* Emergency SOS Button */}
               <button
                 onClick={onOpenSos}
-                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white rounded-2xl text-xs font-sora font-bold shadow-md hover:shadow-lg transition-all active:scale-95 animate-pulse"
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white rounded-xl sm:rounded-2xl text-xs font-sora font-bold shadow-md hover:shadow-lg transition-all active:scale-95 animate-pulse shrink-0"
                 title="Emergency SOS & Incident Broadcast"
+                aria-label="Emergency SOS"
               >
-                <PhoneCall className="w-3.5 h-3.5 text-white" />
+                <PhoneCall className="w-3.5 h-3.5 text-white shrink-0" />
                 <span>SOS</span>
               </button>
 

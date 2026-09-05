@@ -2,6 +2,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import api from '../utils/api.js';
 import { useSocket } from './SocketContext.jsx';
 import { useOffline } from './OfflineContext.jsx';
+import { 
+  getSavedTripOffline, 
+  getAllDestinationsOffline, 
+  saveDestinationOffline,
+  getAllOfflinePackages
+} from '../utils/indexedDb.js';
 
 const TripContext = createContext();
 
@@ -40,12 +46,37 @@ export const TripProvider = ({ children }) => {
 
       if (destRes.success && destRes.destinations?.length > 0) {
         setDestinations(destRes.destinations);
+        // Persist online destinations to IndexedDB for seamless future offline access
+        destRes.destinations.forEach((d) => saveDestinationOffline(d).catch(() => {}));
       }
       if (tripRes.success && tripRes.trip) {
         setActiveTrip(tripRes.trip);
       }
     } catch (err) {
-      console.warn('Network fetch failed:', err);
+      console.warn('[TripContext] Network fetch failed, reading saved data from IndexedDB:', err);
+      // Graceful offline fallback from IndexedDB
+      try {
+        const [savedTrip, savedDestinations, savedPackages] = await Promise.all([
+          getSavedTripOffline(),
+          getAllDestinationsOffline(),
+          getAllOfflinePackages()
+        ]);
+
+        if (savedTrip) {
+          setActiveTrip(savedTrip);
+        }
+
+        if (savedDestinations && savedDestinations.length > 0) {
+          setDestinations(savedDestinations);
+        } else if (savedPackages && savedPackages.length > 0) {
+          const pkgDestinations = savedPackages.map(p => p.destination).filter(Boolean);
+          if (pkgDestinations.length > 0) {
+            setDestinations(pkgDestinations);
+          }
+        }
+      } catch (dbErr) {
+        console.warn('[TripContext] IndexedDB fallback read error:', dbErr);
+      }
     } finally {
       setLoading(false);
     }

@@ -10,6 +10,7 @@ import { Footer } from './components/layout/Footer.jsx';
 import { BottomNav } from './components/layout/BottomNav.jsx';
 import { EmergencySOS } from './components/layout/EmergencySOS.jsx';
 import { AdaptationToast } from './components/layout/AdaptationToast.jsx';
+import { OfflineBanner } from './components/layout/OfflineBanner.jsx';
 import { AuthModal } from './components/auth/AuthModal.jsx';
 
 import { HomePage } from './pages/HomePage.jsx';
@@ -56,6 +57,9 @@ export default function App() {
 
               {/* Real-time Event Adaptation Notification Toast */}
               <AdaptationToast />
+
+              {/* Global Offline Mode Status Banner */}
+              <OfflineBanner />
 
               {/* Global Authentication Modal */}
               <AuthModal />

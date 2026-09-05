@@ -18,11 +18,13 @@ import {
   IndianRupee
 } from 'lucide-react';
 import { useTrip } from '../context/TripContext.jsx';
+import { useOffline } from '../context/OfflineContext.jsx';
 import { ScoreBadge } from '../components/common/ScoreBadge.jsx';
 import { DataSourceBadge } from '../components/common/DataSourceBadge.jsx';
 
 export const ExplorePage = () => {
   const { destinations } = useTrip();
+  const { isDestinationDownloaded } = useOffline();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,6 +162,11 @@ export const ExplorePage = () => {
                 <span className="text-[10px] bg-forest-950/90 text-emerald-300 font-mono font-bold px-2.5 py-1 rounded-full backdrop-blur-xs border border-emerald-500/30">
                   Eco Score {dest.ecoScore}
                 </span>
+                {isDestinationDownloaded(dest.id || dest.name) && (
+                  <span className="text-[10px] bg-emerald-600 text-white font-sora font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs">
+                    ✓ Offline Ready
+                  </span>
+                )}
                 {dest.isOffbeat && (
                   <span className="text-[10px] bg-terracotta-600 text-white font-sora font-bold px-2.5 py-1 rounded-full backdrop-blur-xs">
                     Offbeat

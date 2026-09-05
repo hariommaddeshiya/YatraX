@@ -81,7 +81,7 @@ export const HomePage = () => {
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-forest-950 font-sora leading-tight tracking-tight">
               Explore India with{' '}
               <span className="inline-flex items-center gap-1 text-transparent bg-clip-text bg-gradient-to-r from-forest-800 via-emerald-600 to-terracotta-500">
-                Yatra<span className="italic font-black text-amber-500">X</span>&nbsp;&nbsp;Multi-Modal AI
+                Yatra<span className="italic font-black text-amber-500">X</span>&nbsp;&nbsp;
               </span>
             </h1>
 
