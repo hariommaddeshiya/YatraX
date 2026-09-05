@@ -1,4 +1,4 @@
-# SafarAI: AI-Driven Eco-Tourism & Multi-Modal Travel Planner 🌿🇮🇳
+AI-Driven Eco-Tourism & Multi-Modal Travel Planner 🌿🇮🇳
 ### *Smart India Hackathon 2026 (SIH 2026) Innovation Platform*
 
 > **Philosophy:** `PLAN` ➔ `MONITOR` ➔ `ADAPT` ➔ `PROTECT`  
@@ -37,15 +37,7 @@
 
 6. **Full PWA Offline Mode**:
    - Service Worker caching + browser **IndexedDB** storage (`idb`).
-   - All itineraries, vouchers, emergency numbers, and safe routes remain fully accessible without cellular connection.
-
-7. **5-Minute SIH Presentation Simulation Panel (`/admin/demo`)**:
-   - Dedicated evaluation dashboard to trigger the 5 core scenarios on demand:
-     1. 🏨 Hotel Price Spike (₹4,000 ➔ ₹5,200 ➔ Re-budgeted to Hotel B ₹3,900)
-     2. 🌧️ Torrential Weather Alert (Waterfall Trek ➔ Don Bosco Cultural Museum)
-     3. 👥 Crowd Surge (Root Bridge 65% ➔ 92% ➔ 07:00 AM Slot Shift)
-     4. 🚨 Hazard Geofence Breach (SOS Alert + Command Center Dispatch)
-     5. 📶 Cellular Disconnect (PWA Offline Mode Toggle)
+   - All itineraries, vouchers, emergency numbers, and safe routes remain fully accessible without cellular connection
 
 ---
 
@@ -96,17 +88,6 @@ cd client
 npm install
 npm run dev
 # Vite client will run on http://localhost:3000
-```
-
----
-
-## 🎨 Cultural Design Palette
-- **Warm Sand Background**: `#FAF8F5` / `#F8F6F0`
-- **Earthy Terracotta**: `#B94723` / `#D95327`
-- **Sacred Eco Emerald**: `#16A34A` / `#0F5132`
-- **Saffron Gold**: `#D97706` / `#F59E0B`
-- **Royal Indigo**: `#1E293B` / `#0F172A`
-- **Emergency Crimson**: `#DC2626`
 
 ---
 
