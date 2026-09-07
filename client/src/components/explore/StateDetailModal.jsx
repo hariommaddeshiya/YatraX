@@ -249,6 +249,16 @@ export const StateDetailModal = ({ state, isOpen, onClose, onStateUpdated }) => 
 
                     {/* Action Button */}
                     <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      <Link
+                        to={`/heritage?site=${dest.id}`}
+                        onClick={onClose}
+                        className="px-2.5 py-1.5 rounded-xl border border-sand-300 dark:border-white/20 text-slate-700 dark:text-slate-200 hover:bg-forest-800 hover:text-white dark:hover:bg-emerald-600 text-xs font-sora font-semibold flex items-center gap-1 transition-all"
+                        title={`Open 360° Photosphere View for ${dest.name}`}
+                      >
+                        <Compass className="w-3.5 h-3.5 text-saffron-500" />
+                        <span>360° VR</span>
+                      </Link>
+
                       {isVisited ? (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold font-sora">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />

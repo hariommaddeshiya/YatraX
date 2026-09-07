@@ -29,339 +29,164 @@ import {
   Navigation,
   Footprints,
   ChevronRight,
-  Move
+  Move,
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import { DataSourceBadge } from '../common/DataSourceBadge.jsx';
 
 // =========================================================================
-// TOP 10 INDIAN SANCTUARIES - 360° DUAL-HEMISPHERE EQUIRECTANGULAR VR
-// Front (0°) = Main Monument | Back (180°) = Authentic Matching Opposite View
+// SAFE PROXY URL RESOLVER
+// Routes external images through backend proxy to guarantee 100% CORS-clean
+// WebGL texture access without tainted canvas errors or browser network blocks.
 // =========================================================================
-const HERITAGE_WALKAROUND_NODES = {
-  // 1. Taj Mahal (Agra, UP)
-  'taj-mahal': [
-    {
-      id: 'pool',
-      name: '1. Charbagh Fountains & Central Reflection Pool',
-      subtitle: 'Front (0°): Makrana Marble Dome & Minarets • Behind (180°): Royal Great Gate (Darwaza-i-Rauza)',
-      frontImageUrl: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'plinth', label: 'Step onto Marble Plinth ➔' }]
-    },
-    {
-      id: 'plinth',
-      name: '2. Main White Marble Plinth & Archway',
-      subtitle: 'Front (0°): Translucent Marble & Pietra Dura Inlay • Behind (180°): Charbagh Gardens & Yamuna River',
-      frontImageUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1585506942812-e72b29cef752?auto=format&fit=crop&w=2400&q=90',
-      arrows: [
-        { targetNodeId: 'river', label: 'Walk to Yamuna Terrace ➔' },
-        { targetNodeId: 'pool', label: '⬅ Walk Back to Pool' }
-      ]
-    },
-    {
-      id: 'river',
-      name: '3. Yamuna Riverfront & Mosque Terrace',
-      subtitle: 'Front (0°): Red Sandstone Mosque Courtyard • Behind (180°): Broad Yamuna River & Mehtab Bagh Horizon',
-      frontImageUrl: 'https://images.unsplash.com/photo-1585506942812-e72b29cef752?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'plinth', label: '⬅ Return to Marble Plinth' }]
-    }
-  ],
-
-  // 2. Varanasi Sacred Ghats & Kashi (Varanasi, UP)
-  'varanasi-ghats': [
-    {
-      id: 'dash',
-      name: '1. Dashashwamedh Main Ghat Arena',
-      subtitle: 'Front (0°): Historic Tiered Stone Steps & Aarti Altars • Behind (180°): Holy Ganga Expanse & Riverboats',
-      frontImageUrl: 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'ganga', label: 'Step onto Holy Ganga Boat ➔' }]
-    },
-    {
-      id: 'ganga',
-      name: '2. Ganga Mid-River Vantage Point',
-      subtitle: 'Front (0°): Crescent Curve of 84 Ancient Stone Ghats • Behind (180°): Eastern Sunrise Riverbank & Morning Mist',
-      frontImageUrl: 'https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1587595431973-160d0d94add1?auto=format&fit=crop&w=2400&q=90',
-      arrows: [
-        { targetNodeId: 'mani', label: 'Walk to Maratha River Pavilions ➔' },
-        { targetNodeId: 'dash', label: '⬅ Return to Dashashwamedh' }
-      ]
-    },
-    {
-      id: 'mani',
-      name: '3. Ancient Sandstone River Pavilions',
-      subtitle: 'Front (0°): Centuries-old Stone Chattris • Behind (180°): Sacred River Horizon & Wooden Boats',
-      frontImageUrl: 'https://images.unsplash.com/photo-1587595431973-160d0d94add1?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'ganga', label: '⬅ Return to River Boat' }]
-    }
-  ],
-
-  // 3. Hampi Vijayanagara Ruins (Karnataka)
-  'hampi-vijayanagara': [
-    {
-      id: 'chariot',
-      name: '1. Monolithic Vittala Stone Chariot',
-      subtitle: 'Front (0°): Carved Granite Solar Chariot • Behind (180°): 56 Musical Pillars Maha-Mandapa',
-      frontImageUrl: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1600100397608-f010f443a504?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'pillars', label: 'Walk to Musical Pillars Mandapa ➔' }]
-    },
-    {
-      id: 'pillars',
-      name: '2. 56 Musical Granite Pillars Mandapa',
-      subtitle: 'Front (0°): Resonating Dravidian Columns • Behind (180°): Hemakuta Hill Boulder Horizon',
-      frontImageUrl: 'https://images.unsplash.com/photo-1600100397608-f010f443a504?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=2400&q=90',
-      arrows: [
-        { targetNodeId: 'hill', label: 'Walk to Hemakuta Sunset Horizon ➔' },
-        { targetNodeId: 'chariot', label: '⬅ Return to Stone Chariot' }
-      ]
-    },
-    {
-      id: 'hill',
-      name: '3. Hemakuta Hill Boulder Sanctuary',
-      subtitle: 'Front (0°): Ancient Hilltop Shrines • Behind (180°): Virupaksha Soaring Gopuram Horizon',
-      frontImageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'pillars', label: '⬅ Return to Temple Mandapa' }]
-    }
-  ],
-
-  // 4. Golden Temple (Harmandir Sahib, Amritsar, Punjab)
-  'golden-temple': [
-    {
-      id: 'entrance',
-      name: '1. Clock Tower Deori Gateway & Arch',
-      subtitle: 'Front (0°): Gilded Harmandir Sahib in Amrit Sarovar • Behind (180°): Victorian Clock Tower Gateway Plaza',
-      frontImageUrl: 'https://images.unsplash.com/photo-1588096344356-9b575775f0a0?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1609137144820-21016834164b?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'parikrama', label: 'Walk along Amrit Sarovar ➔' }]
-    },
-    {
-      id: 'parikrama',
-      name: '2. Amrit Sarovar Marble Parikrama',
-      subtitle: 'Front (0°): Akal Takht & Sacred Pool • Behind (180°): White Marble Colonnades & Dukh Bhanjani Beri',
-      frontImageUrl: 'https://images.unsplash.com/photo-1609137144820-21016834164b?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1514222134-b57cbb8ce073?auto=format&fit=crop&w=2400&q=90',
-      arrows: [
-        { targetNodeId: 'sanctum', label: 'Walk across Guru Causeway ➔' },
-        { targetNodeId: 'entrance', label: '⬅ Return to Clock Tower' }
-      ]
-    },
-    {
-      id: 'sanctum',
-      name: '3. Gilded Harmandir Sahib Sanctum',
-      subtitle: 'Front (0°): 500kg Pure Gold Foil Sanctum • Behind (180°): Marble Causeway (Guru’s Bridge) to Entrance',
-      frontImageUrl: 'https://images.unsplash.com/photo-1514222134-b57cbb8ce073?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1588096344356-9b575775f0a0?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'parikrama', label: '⬅ Return to Parikrama' }]
-    }
-  ],
-
-  // 5. Konark Sun Temple (Puri, Odisha)
-  'konark-sun-temple': [
-    {
-      id: 'wheels',
-      name: '1. Grand Sun Chariot 24 Wheels',
-      subtitle: 'Front (0°): Colossal Stone Sundial Wheels of Surya • Behind (180°): Natya Mandapa Dancing Hall',
-      frontImageUrl: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1609137889591-1779350a096e?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'natya', label: 'Walk to Natya Mandapa ➔' }]
-    },
-    {
-      id: 'natya',
-      name: '2. Natya Mandapa Dancing Hall',
-      subtitle: 'Front (0°): Carved Columns of Odissi Dancers • Behind (180°): Chandrabhaga Coastal Casuarina Dunes',
-      frontImageUrl: 'https://images.unsplash.com/photo-1609137889591-1779350a096e?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'wheels', label: '⬅ Return to Sun Wheels' }]
-    }
-  ],
-
-  // 6. Meenakshi Amman Temple (Madurai, Tamil Nadu)
-  'meenakshi-temple': [
-    {
-      id: 'gopuram',
-      name: '1. Southern Polychrome Gopuram (170 ft)',
-      subtitle: 'Front (0°): Soaring Gateway with 33,000 Deities • Behind (180°): Golden Lotus Sacred Water Tank',
-      frontImageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'tank', label: 'Walk to Golden Lotus Tank ➔' }]
-    },
-    {
-      id: 'tank',
-      name: '2. Golden Lotus Sacred Tank (Potramarai Kulam)',
-      subtitle: 'Front (0°): Sacred Pool Reflecting Gopurams • Behind (180°): Hall of 1000 Granite Pillars Prakaram',
-      frontImageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'gopuram', label: '⬅ Return to South Gopuram' }]
-    }
-  ],
-
-  // 7. Jaisalmer Living Fort (Rajasthan)
-  'jaisalmer-fort': [
-    {
-      id: 'gate',
-      name: '1. Suraj Pol Golden Gateway',
-      subtitle: 'Front (0°): Yellow Sandstone Bastions & Ramps • Behind (180°): Great Thar Desert Vast Golden Dunes',
-      frontImageUrl: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'palace', label: 'Walk to Maharaja Palace ➔' }]
-    },
-    {
-      id: 'palace',
-      name: '2. Maharaja Palace & Fort Ramparts',
-      subtitle: 'Front (0°): 7-Tiered Royal Palace Facade • Behind (180°): Walled Desert City & Sam Sand Dunes Horizon',
-      frontImageUrl: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'gate', label: '⬅ Return to Fort Gate' }]
-    }
-  ],
-
-  // 8. Alleppey Backwaters & Vembanad (Kerala)
-  'alleppey-backwaters': [
-    {
-      id: 'boat',
-      name: '1. Traditional Houseboat Sun Deck',
-      subtitle: 'Front (0°): Handcrafted Wooden Kettuvallam & Vembanad Lake • Behind (180°): Lush Coconut Palm Canals & Paddy Banks',
-      frontImageUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'canal', label: 'Glide into Palm Canal ➔' }]
-    },
-    {
-      id: 'canal',
-      name: '2. Palm-Fringed Village Canal Crossing',
-      subtitle: 'Front (0°): Serene Backwater Waterways • Behind (180°): Snake Boat Race Pavilion & Chinese Fishing Nets',
-      frontImageUrl: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'boat', label: '⬅ Return to Houseboat' }]
-    }
-  ],
-
-  // 9. Ajanta & Ellora Caves (Maharashtra)
-  'ajanta-ellora': [
-    {
-      id: 'kailash',
-      name: '1. Kailash Temple Cave 16 Monolith Ground',
-      subtitle: 'Front (0°): Monolithic Shrine Carved from Top-Down • Behind (180°): 100-ft Vertical Basalt Cliff Ravine & Elephants',
-      frontImageUrl: 'https://images.unsplash.com/photo-1590766940554-634a7ed41450?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1609137889591-1779350a096e?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'court', label: 'Walk to Upper Galleries ➔' }]
-    },
-    {
-      id: 'court',
-      name: '2. Upper Cliff Galleries & Monolithic Pillars',
-      subtitle: 'Front (0°): Two-Story Rock-Cut Colonnades • Behind (180°): Sahyadri Mountain Waterfall Gorge',
-      frontImageUrl: 'https://images.unsplash.com/photo-1609137889591-1779350a096e?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1590766940554-634a7ed41450?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'kailash', label: '⬅ Return to Monolith Base' }]
-    }
-  ],
-
-  // 10. Mawlynnong & Nongriat Living Roots (Meghalaya)
-  'nongriat-bridges': [
-    {
-      id: 'bridge',
-      name: '1. Double Decker Living Root Bridge',
-      subtitle: 'Front (0°): 500-Year Bio-Engineered Ficus Root Bridge • Behind (180°): Turquoise Glacial Rainforest Plunge Pool',
-      frontImageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'pool', label: 'Walk to Turquoise River Pool ➔' }]
-    },
-    {
-      id: 'pool',
-      name: '2. Natural Turquoise Rainforest Plunge Pool',
-      subtitle: 'Front (0°): Crystal Turquoise Mountain River Basin • Behind (180°): Dense Meghalaya Rainforest Canopy & Boulders',
-      frontImageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=2400&q=90',
-      arrows: [{ targetNodeId: 'bridge', label: '⬅ Return to Living Bridge' }]
-    }
-  ]
+const getSafeImageUrl = (rawUrl) => {
+  if (!rawUrl) return null;
+  // If it's an external HTTP/HTTPS URL, route through our server proxy
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    return `/api/heritage/proxy-image?url=${encodeURIComponent(rawUrl)}`;
+  }
+  return rawUrl;
 };
 
 // =========================================================================
-// EQUIRECTANGULAR 360° PHOTOSPHERE CANVAS COMPOSITOR
-// Composites Front (0°) and Authentic Back (180°) with seamless seam blending
+// AUTHENTIC 360° PHOTOSPHERE TEXTURE COMPOSITOR & LOADER
+// Renders the ACTUAL, AUTHENTIC destination photography in full 360° spherical
+// projection. Zero fake/procedural cartoon graphics or text labels on the sphere.
 // =========================================================================
-const compose360EquirectangularTexture = (frontUrl, backUrl) => {
+const loadAuthentic360Texture = (frontUrl, backUrl) => {
   return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
+    const safeFront = getSafeImageUrl(frontUrl);
+    const safeBack = getSafeImageUrl(backUrl);
 
-    const frontImg = new Image();
-    frontImg.crossOrigin = 'anonymous';
-
-    const backImg = new Image();
-    backImg.crossOrigin = 'anonymous';
-
-    let loaded = 0;
-    const renderCanvas = () => {
-      loaded++;
-      if (loaded < 2) return;
-
+    // If both front and distinct back views exist (e.g. curated sanctuaries), composite dual-hemisphere
+    if (safeBack && safeBack !== safeFront) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2048;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
       const w = canvas.width;
       const h = canvas.height;
 
-      // Fill background
-      ctx.fillStyle = '#0a1a18';
+      // Clean neutral dark base
+      ctx.fillStyle = '#061a18';
       ctx.fillRect(0, 0, w, h);
 
-      // In Three.js SphereGeometry inverted (scale(-1, 1, 1)):
-      // U = 0.5 (X = w/2) corresponds to theta = 0 deg (STRAIGHT AHEAD / FRONT)
-      // U = 0.0 & U = 1.0 (X = 0 & X = w) correspond to theta = 180 deg (STRAIGHT BEHIND / BACK)
+      const frontImg = new Image();
+      frontImg.crossOrigin = 'anonymous';
 
-      // 1. Draw FRONT Image centered at X = w/2 (span X: w/4 to 3*w/4, width = w/2)
-      ctx.drawImage(frontImg, w / 4, 0, w / 2, h);
+      const backImg = new Image();
+      backImg.crossOrigin = 'anonymous';
 
-      // 2. Draw BACK Image split at left (X: 0 to w/4) and right (X: 3*w/4 to w)
-      // Left half of backImg at [3*w/4, w] and Right half of backImg at [0, w/4]
-      ctx.drawImage(backImg, 0, 0, backImg.width / 2, backImg.height, 3 * w / 4, 0, w / 4, h);
-      ctx.drawImage(backImg, backImg.width / 2, 0, backImg.width / 2, backImg.height, 0, 0, w / 4, h);
+      let count = 0;
+      let hasFinished = false;
 
-      // 3. Apply smooth subtle feathering at the 90° (w/4) and 270° (3*w/4) lateral transitions
-      const blendW = 40;
-      
-      // Seam 1: at X = w/4
-      const grad1 = ctx.createLinearGradient(w / 4 - blendW, 0, w / 4 + blendW, 0);
-      grad1.addColorStop(0, 'rgba(10, 26, 24, 0.25)');
-      grad1.addColorStop(0.5, 'rgba(10, 26, 24, 0.05)');
-      grad1.addColorStop(1, 'rgba(10, 26, 24, 0)');
-      ctx.fillStyle = grad1;
-      ctx.fillRect(w / 4 - blendW, 0, blendW * 2, h);
+      const finishCanvas = () => {
+        if (hasFinished) return;
+        hasFinished = true;
 
-      // Seam 2: at X = 3*w/4
-      const grad2 = ctx.createLinearGradient(3 * w / 4 - blendW, 0, 3 * w / 4 + blendW, 0);
-      grad2.addColorStop(0, 'rgba(10, 26, 24, 0)');
-      grad2.addColorStop(0.5, 'rgba(10, 26, 24, 0.05)');
-      grad2.addColorStop(1, 'rgba(10, 26, 24, 0.25)');
-      ctx.fillStyle = grad2;
-      ctx.fillRect(3 * w / 4 - blendW, 0, blendW * 2, h);
+        try {
+          const frontValid = frontImg.complete && frontImg.naturalWidth > 0;
+          const backValid = backImg.complete && backImg.naturalWidth > 0;
 
-      // Create Three.js Texture with ClampToEdgeWrapping (NO MIRRORED REPEAT)
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      texture.repeat.set(1, 1);
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      resolve(texture);
-    };
+          if (frontValid && backValid) {
+            // 1. Draw Front Monument centered at 0° (X = w/4 to 3w/4, width = w/2)
+            ctx.drawImage(frontImg, w * 0.25, 0, w * 0.5, h);
 
-    frontImg.onload = renderCanvas;
-    frontImg.onerror = () => { loaded++; if (loaded === 2) renderCanvas(); };
+            // 2. Draw Authentic Rear View split across left (0 to w/4) and right (3w/4 to w)
+            ctx.drawImage(backImg, 0, 0, backImg.width / 2, backImg.height, w * 0.75, 0, w * 0.25, h);
+            ctx.drawImage(backImg, backImg.width / 2, 0, backImg.width / 2, backImg.height, 0, 0, w * 0.25, h);
 
-    backImg.onload = renderCanvas;
-    backImg.onerror = () => { loaded++; if (loaded === 2) renderCanvas(); };
+            // 3. Seamless lateral gradient feathering at 90° and 270° seams
+            const blendW = 48;
+            const grad1 = ctx.createLinearGradient(w * 0.25 - blendW, 0, w * 0.25 + blendW, 0);
+            grad1.addColorStop(0, 'rgba(6, 26, 24, 0.35)');
+            grad1.addColorStop(0.5, 'rgba(6, 26, 24, 0.08)');
+            grad1.addColorStop(1, 'rgba(6, 26, 24, 0)');
+            ctx.fillStyle = grad1;
+            ctx.fillRect(w * 0.25 - blendW, 0, blendW * 2, h);
 
-    frontImg.src = frontUrl;
-    backImg.src = backUrl || frontUrl;
+            const grad2 = ctx.createLinearGradient(w * 0.75 - blendW, 0, w * 0.75 + blendW, 0);
+            grad2.addColorStop(0, 'rgba(6, 26, 24, 0)');
+            grad2.addColorStop(0.5, 'rgba(6, 26, 24, 0.08)');
+            grad2.addColorStop(1, 'rgba(6, 26, 24, 0.35)');
+            ctx.fillStyle = grad2;
+            ctx.fillRect(w * 0.75 - blendW, 0, blendW * 2, h);
+
+          } else if (frontValid) {
+            // Draw frontImg across the entire panoramic canvas
+            ctx.drawImage(frontImg, 0, 0, w, h);
+          } else if (backValid) {
+            ctx.drawImage(backImg, 0, 0, w, h);
+          }
+        } catch (e) {
+          console.warn('[PanoramaViewer] Canvas compositing notice:', e);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        resolve(texture);
+      };
+
+      // 6s timeout safety net
+      const timer = setTimeout(finishCanvas, 6000);
+
+      const checkBoth = () => {
+        count++;
+        if (count >= 2) {
+          clearTimeout(timer);
+          finishCanvas();
+        }
+      };
+
+      frontImg.onload = checkBoth;
+      frontImg.onerror = checkBoth;
+      backImg.onload = checkBoth;
+      backImg.onerror = checkBoth;
+
+      frontImg.src = safeFront;
+      backImg.src = safeBack;
+
+    } else {
+      // Single authentic photograph: use THREE.TextureLoader directly with MirroredRepeatWrapping
+      // This seamlessly maps the authentic destination photo all around the 360° sphere
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin('anonymous');
+
+      loader.load(
+        safeFront,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.wrapS = THREE.MirroredRepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.repeat.set(2, 1);
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.generateMipmaps = true;
+          resolve(texture);
+        },
+        undefined,
+        () => {
+          // If proxy fails, try direct URL fallback
+          loader.load(
+            frontUrl,
+            (tex) => {
+              tex.colorSpace = THREE.SRGBColorSpace;
+              tex.wrapS = THREE.MirroredRepeatWrapping;
+              tex.wrapT = THREE.ClampToEdgeWrapping;
+              tex.repeat.set(2, 1);
+              resolve(tex);
+            },
+            undefined,
+            () => resolve(null)
+          );
+        }
+      );
+    }
   });
 };
 
@@ -370,24 +195,25 @@ export const PanoramaViewer = ({ site }) => {
   const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
   const [rotationSpeed, setRotationSpeed] = useState(1);
-  const [selectedHotspot, setSelectedHotspot] = useState(null);
   const [loadingTexture, setLoadingTexture] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [currentFov, setCurrentFov] = useState(75);
-  const [viewOrientation, setViewOrientation] = useState(0); // degrees for compass
+  const [viewOrientation, setViewOrientation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Studio Clean Audio Narration State (Zero Background Noise)
+  // Studio Audio Narration
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isAudioPaused, setIsAudioPaused] = useState(false);
   const [audioSpeed, setAudioSpeed] = useState(0.95);
   const [speechProgress, setSpeechProgress] = useState(0);
   const utteranceRef = useRef(null);
 
+  // Three.js References
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
+  const sphereMaterialRef = useRef(null);
 
   const isUserInteractingRef = useRef(false);
   const onPointerDownPointerXRef = useRef(0);
@@ -399,27 +225,35 @@ export const PanoramaViewer = ({ site }) => {
   const phiRef = useRef(0);
   const thetaRef = useRef(0);
 
-  // Walkaround Nodes for this site
-  const nodes = HERITAGE_WALKAROUND_NODES[site?.id] || [
-    {
-      id: 'main',
-      name: `1. ${site?.name || 'Main Sanctuary View'}`,
-      subtitle: site?.historicalSummary || 'Historic Sanctuary 360° Spherical Photosphere',
-      frontImageUrl: site?.panoramaUrl || site?.image || 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=2400&q=90',
-      backImageUrl: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=2400&q=90',
-      arrows: []
-    }
-  ];
+  // Universal Walkaround Nodes for Destinations
+  const nodes = (site?.walkaroundNodes && site.walkaroundNodes.length > 0)
+    ? site.walkaroundNodes
+    : [
+        {
+          id: 'main',
+          name: `1. ${site?.name || 'Sanctuary'} - Principal View`,
+          subtitle: `Front (0°): Main Sanctum & Facade • Behind (180°): Outer Horizon & Entrance`,
+          frontImageUrl: site?.panoramaUrl || site?.image || 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=1800&q=80',
+          backImageUrl: site?.image || site?.panoramaUrl
+        },
+        {
+          id: 'courtyard',
+          name: `2. Outer Courtyard & Colonnade`,
+          subtitle: `Front (0°): Courtyard Colonnade • Behind (180°): Surrounding Heritage Landscape`,
+          frontImageUrl: site?.image || site?.panoramaUrl,
+          backImageUrl: site?.panoramaUrl || site?.image
+        }
+      ];
 
   const activeNode = nodes[currentNodeIndex] || nodes[0];
 
-  // Reset node index when site changes
+  // Reset node on site change
   useEffect(() => {
     setCurrentNodeIndex(0);
   }, [site?.id]);
 
   // -------------------------------------------------------------
-  // STUDIO AUDIO GUIDE (Zero synthesized drone/oscillator)
+  // STUDIO AUDIO GUIDE
   // -------------------------------------------------------------
   const stopAudioNarration = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -445,14 +279,13 @@ export const PanoramaViewer = ({ site }) => {
 
     window.speechSynthesis.cancel();
 
-    const narrationText = `${site?.name || 'Heritage Sanctuary'}, located in ${site?.location || ''}, ${site?.state || 'India'}. ${site?.historicalSummary || ''} ${activeNode?.subtitle || ''}`;
+    const narrationText = `${site?.name || 'Sacred Sanctuary'}, situated in ${site?.location || site?.state || 'India'}. ${site?.historicalSummary || ''} ${activeNode?.subtitle || ''}`;
 
     const utterance = new SpeechSynthesisUtterance(narrationText);
     utteranceRef.current = utterance;
     utterance.rate = audioSpeed;
     utterance.pitch = 1.0;
 
-    // Use clean natural voice
     const voices = window.speechSynthesis.getVoices();
     const naturalVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('India') || v.name.includes('Samantha')));
     if (naturalVoice) utterance.voice = naturalVoice;
@@ -506,7 +339,7 @@ export const PanoramaViewer = ({ site }) => {
   }, [site, stopAudioNarration]);
 
   // -------------------------------------------------------------
-  // THREE.JS 360° SPHERICAL VIRTUAL REALITY INITIALIZATION
+  // THREE.JS 360° SPHERICAL VR INITIALIZATION
   // -------------------------------------------------------------
   useEffect(() => {
     if (!mountRef.current || !site) return;
@@ -529,10 +362,10 @@ export const PanoramaViewer = ({ site }) => {
       alpha: true,
       powerPreference: 'high-performance' 
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.1;
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -542,20 +375,23 @@ export const PanoramaViewer = ({ site }) => {
     geometry.scale(-1, 1, 1);
 
     const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    sphereMaterialRef.current = sphereMaterial;
     const sphereMesh = new THREE.Mesh(geometry, sphereMaterial);
     sphereMeshRef.current = sphereMesh;
     scene.add(sphereMesh);
 
-    // 5. Load Real Dual-Hemisphere Equirectangular Texture (Front != Back)
+    // 5. Load Authentic Destination 360 Photosphere
     setLoadingTexture(true);
-    compose360EquirectangularTexture(activeNode.frontImageUrl, activeNode.backImageUrl).then((texture) => {
-      sphereMaterial.map = texture;
-      sphereMaterial.color.setHex(0xFFFFFF);
-      sphereMaterial.needsUpdate = true;
+    loadAuthentic360Texture(activeNode.frontImageUrl, activeNode.backImageUrl).then((texture) => {
+      if (sphereMaterialRef.current && texture) {
+        sphereMaterialRef.current.map = texture;
+        sphereMaterialRef.current.color.setHex(0xFFFFFF);
+        sphereMaterialRef.current.needsUpdate = true;
+      }
       setLoadingTexture(false);
     });
 
-    // 6. Mouse / Touch Drag Handlers
+    // 6. User Interaction Handlers
     const onPointerDown = (event) => {
       isUserInteractingRef.current = true;
       const clientX = event.clientX || (event.touches && event.touches[0].clientX);
@@ -593,7 +429,7 @@ export const PanoramaViewer = ({ site }) => {
     window.addEventListener('pointerup', onPointerUp);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
-    // 7. Window Resize Handler
+    // 7. Resize Handler
     const handleResize = () => {
       if (!mountRef.current || !renderer || !camera) return;
       const newW = mountRef.current.clientWidth;
@@ -607,7 +443,6 @@ export const PanoramaViewer = ({ site }) => {
 
     // 8. Animation Loop
     let animationFrameId;
-
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
@@ -625,7 +460,6 @@ export const PanoramaViewer = ({ site }) => {
 
       camera.lookAt(camera.target);
 
-      // Orientation degree for compass HUD (0 = Front/North, 180 = Rear/South)
       const normDeg = (Math.round(lonRef.current) % 360 + 360) % 360;
       setViewOrientation(normDeg);
 
@@ -646,7 +480,7 @@ export const PanoramaViewer = ({ site }) => {
   }, [site]);
 
   // -------------------------------------------------------------
-  // SMOOTH WALKAROUND NODE TRANSITION WITH REAL OPPOSITE ANGLE
+  // TRANSITION TO WALKAROUND NODE
   // -------------------------------------------------------------
   const handleWalkToNode = (targetIndex) => {
     if (targetIndex === currentNodeIndex || !nodes[targetIndex]) return;
@@ -655,31 +489,19 @@ export const PanoramaViewer = ({ site }) => {
     setLoadingTexture(true);
 
     const targetNode = nodes[targetIndex];
-    if (sphereMeshRef.current) {
-      compose360EquirectangularTexture(targetNode.frontImageUrl, targetNode.backImageUrl).then((newTex) => {
-        if (sphereMeshRef.current) {
-          sphereMeshRef.current.material.map = newTex;
-          sphereMeshRef.current.material.needsUpdate = true;
-        }
-        setCurrentNodeIndex(targetIndex);
-        setLoadingTexture(false);
-        setTimeout(() => setIsTransitioning(false), 300);
-      });
-    } else {
+    loadAuthentic360Texture(targetNode.frontImageUrl, targetNode.backImageUrl).then((newTex) => {
+      if (sphereMaterialRef.current && newTex) {
+        sphereMaterialRef.current.map = newTex;
+        sphereMaterialRef.current.color.setHex(0xFFFFFF);
+        sphereMaterialRef.current.needsUpdate = true;
+      }
       setCurrentNodeIndex(targetIndex);
-      setIsTransitioning(false);
       setLoadingTexture(false);
-    }
+      setTimeout(() => setIsTransitioning(false), 250);
+    });
   };
 
-  const handleWalkByArrow = (targetNodeId) => {
-    const targetIdx = nodes.findIndex(n => n.id === targetNodeId);
-    if (targetIdx !== -1) {
-      handleWalkToNode(targetIdx);
-    }
-  };
-
-  // Zoom Handlers
+  // Zoom & Pan Handlers
   const handleZoomIn = () => {
     if (!cameraRef.current) return;
     const newFov = THREE.MathUtils.clamp(cameraRef.current.fov - 12, 25, 100);
@@ -712,18 +534,28 @@ export const PanoramaViewer = ({ site }) => {
     if (dir === 'down') latRef.current -= 15;
   };
 
-  // View direction descriptor based on current compass orientation
+  const toggleFullscreen = () => {
+    if (!mountRef.current) return;
+    const elem = mountRef.current.parentElement;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  // Direction descriptor based on bearing
   const getViewDirectionLabel = (deg) => {
-    if (deg >= 315 || deg < 45) return { dir: 'FRONT (0°)', desc: 'Primary Monument Facade & Sanctum', color: 'text-emerald-300' };
-    if (deg >= 45 && deg < 135) return { dir: 'EAST (90°)', desc: 'Side Courtyard & Architectural Cloister', color: 'text-amber-300' };
-    if (deg >= 135 && deg < 225) return { dir: 'BEHIND (180°)', desc: 'Authentic Rear Perspective & Entrance Gate', color: 'text-cyan-300' };
-    return { dir: 'WEST (270°)', desc: 'Adjacent Water Body & Horizon Vista', color: 'text-orange-300' };
+    if (deg >= 315 || deg < 45) return { dir: 'FRONT (0°)', desc: 'Primary Monument Sanctum', color: 'text-emerald-300' };
+    if (deg >= 45 && deg < 135) return { dir: 'EAST (90°)', desc: 'East Cloister & Architectural Wings', color: 'text-amber-300' };
+    if (deg >= 135 && deg < 225) return { dir: 'BEHIND (180°)', desc: 'Rear Perspective & Entrance Gateway', color: 'text-cyan-300' };
+    return { dir: 'WEST (270°)', desc: 'West Terraces & Horizon Vista', color: 'text-rose-300' };
   };
 
   const dirInfo = getViewDirectionLabel(viewOrientation);
 
   return (
-    <div className="relative w-full rounded-4xl overflow-hidden shadow-2xl border-2 border-emerald-500/30 bg-[#051F1C] select-none text-white">
+    <div className={`relative w-full rounded-4xl overflow-hidden shadow-2xl border-2 border-emerald-500/30 bg-[#051F1C] select-none text-white ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''}`}>
       
       {/* 360 WebGL Canvas Container */}
       <div 
@@ -737,17 +569,17 @@ export const PanoramaViewer = ({ site }) => {
           <div className="w-12 h-12 rounded-full border-3 border-emerald-400 border-t-transparent animate-spin" />
           <div className="text-center space-y-1">
             <span className="text-sm font-sora font-extrabold text-white block">
-              Compositing 360° Photosphere Environment...
+              Loading 360° Photosphere Environment...
             </span>
             <span className="text-xs text-emerald-300 font-mono">
-              Aligning Front (0°) & Rear (180°) Perspectives • {activeNode.name}
+              Aligning Spherical VR View • {site?.name}
             </span>
           </div>
         </div>
       )}
 
       {/* -------------------------------------------------------------
-          TOP BAR: SITE IDENTITY, NODE SELECTOR & COMPASS HUD
+          TOP BAR: SITE IDENTITY & COMPASS HUD
          ------------------------------------------------------------- */}
       <div className="absolute top-4 left-4 right-4 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pointer-events-none">
         
@@ -839,7 +671,7 @@ export const PanoramaViewer = ({ site }) => {
           )}
         </div>
 
-        {/* Right: Camera Controls (Pan, Zoom, Auto-Rotate, Reset) */}
+        {/* Right: Camera Controls (Pan, Zoom, Auto-Rotate, Reset, Fullscreen) */}
         <div className="bg-[#051F1C]/95 backdrop-blur-md p-2 rounded-2xl border border-emerald-500/40 shadow-xl pointer-events-auto flex items-center gap-1.5 self-center md:self-auto">
           
           <button
@@ -891,21 +723,29 @@ export const PanoramaViewer = ({ site }) => {
           >
             <RotateCcw className="w-4 h-4" />
           </button>
+
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen 360° VR'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
         </div>
 
       </div>
 
       {/* -------------------------------------------------------------
-          WALKAROUND NODES SELECTOR (GROUND ARROWS)
+          WALKAROUND VIEWPOINTS SELECTOR
          ------------------------------------------------------------- */}
       {nodes.length > 1 && (
-        <div className="absolute top-20 left-4 z-20 flex flex-col gap-1.5 pointer-events-auto max-w-[220px]">
+        <div className="absolute top-[110px] left-4 z-20 flex flex-col gap-1.5 pointer-events-auto max-w-[240px]">
           <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 px-2 py-0.5 bg-[#051F1C]/80 rounded-md backdrop-blur-xs self-start border border-emerald-500/30">
             Ground Viewpoints:
           </span>
           {nodes.map((n, idx) => (
             <button
-              key={n.id}
+              key={n.id || idx}
               onClick={() => handleWalkToNode(idx)}
               className={`px-3 py-2 rounded-xl text-left text-xs font-sora font-bold transition-all flex items-center justify-between gap-2 cursor-pointer ${
                 currentNodeIndex === idx
